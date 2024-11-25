@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    .left, .right {
+      width: 50%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .left {
+      background-color: #343a40;
+      color: #fff;
+    }
+    .left h2 {
+      margin-top: 0;
+    }
+    .left input[type="text"], .left button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 4px;
+    }
+    .left input[type="text"] {
+      background-color: #495057;
+      color: #fff;
+    }
+    .left button {
+      background-color: #17a2b8;
+      color: #fff;
+      cursor: pointer;
+    }
+    .left button:hover {
+      background-color: #138496;
+    }
+    .right {
+      background-color: #fff;
+      color: #333;
+      overflow-y: auto;
+    }
+    .right table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .right table, .right th, .right td {
+      border: 1px solid #dee2e6;
+    }
+    .right th, .right td {
+      padding: 12px;
+      text-align: left;
+    }
+    .right th {
+      background-color: #e9ecef;
+    }
+    .right td button {
+      padding: 5px 10px;
+      border: none;
+      background-color: #007bff;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .right td button:hover {
+      background-color: #0056b3;
+    }
+    .alert {
+      padding: 10px;
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+    }
+    .alert.red {
+      background-color: #dc3545;
+    }
+    .alert.green {
+      background-color: #28a745;
+    }
+    #detailsModal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="left">
+      <h2>Search Barcode</h2>
+      <input type="text" id="barcode" placeholder="Enter Barcode" onkeydown="handleKeyPress(event)">
+      <button onclick="searchBarcode()">Search</button>
+    </div>
+    <div class="right">
+      <table id="resultTable">
+        <tr>
+          <th>Details</th>
+          <th>Information</th>
+        </tr>
+        <tr>
+          <td>BARCODE ID</td>
+          <td id="barcodeid">N/A</td>
+        </tr>
+        <tr>
+          <td>BLOOD TYPE</td>
+          <td id="bt">N/A</td>
+        </tr>
+        <tr>
+          <td>RH TYPE</td>
+          <td id="rh">N/A</td>
+        </tr>
+        <tr>
+          <td>COMPONENTS</td>
+          <td class="button-group" id="componentButtons">
+            <span id="prbcButton">PRBC: N/A</span><br>
+            <span id="pcButton">PC: N/A</span><br>
+            <span id="ffpButton">FFP: N/A</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Screening Status</td>
+          <td id="screening">N/A</td>
+        </tr>
+      </table>
+
+      <!-- Screening Results Section -->
+      <table id="screeningTable">
+        <tr>
+          <th>Screening Test</th>
+          <th>Result</th>
+        </tr>
+        <tr>
+          <td>HCV</td>
+          <td id="hcv">N/A</td>
+        </tr>
+        <tr>
+          <td>Syphilis</td>
+          <td id="syphilis">N/A</td>
+        </tr>
+        <tr>
+          <td>HBsAg</td>
+          <td id="hbsag">N/A</td>
+        </tr>
+        <tr>
+          <td>HIV</td>
+          <td id="hiv">N/A</td>
+        </tr>
+        <tr>
+          <td>Malaria</td>
+          <td id="malaria">N/A</td>
+        </tr>
+      </table>
+
+      <button onclick="window.print()">Print Results</button>
+      <button onclick="redirectToHome()">Back to Home</button>
+    </div>
+  </div>
+
+  <div id="detailsModal">
+    <h2>Component Details</h2>
+    <p id="componentDetails"></p>
+    <button onclick="closeModal()">Close</button>
+  </div>
+
+  <div id="overlay" onclick="closeModal()"></div>
+
+  <script>
+    let resultData;
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        searchBarcode();
+      }
+    }
+
+    function searchBarcode() {
+      const barcode = document.getElementById('barcode').value.trim();
+
+      if (!barcode) {
+        alert('Please enter a valid Barcode ID.');
+        return;
+      }
+
+      clearDetails();
+
+      fetch('/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcodeid: barcode }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        resultData = data;
+
+        if (data.prbc || data.pc || data.plasma) {
+          document.getElementById('barcodeid').innerText = data.prbc ? data.prbc.barcodeid : 'N/A';
+          document.getElementById('bt').innerText = data.prbc ? data.prbc.bt : 'N/A';
+          document.getElementById('rh').innerText = data.prbc ? data.prbc.rh : 'N/A';
+
+          document.getElementById('prbcButton').innerHTML = data.prbc ? 
+            `PRBC: <button onclick="showDetails({volume: ${data.prbc.volume}, expirydate: '${data.prbc.expirydate}'})">Details</button>` :
+            'PRBC: N/A';
+
+          document.getElementById('pcButton').innerHTML = data.pc ? 
+            `PC: <button onclick="showDetails({volume: ${data.pc.volume}, expirydate: '${data.pc.expirydate}'})">Details</button>` :
+            'PC: N/A';
+
+          document.getElementById('ffpButton').innerHTML = data.plasma ? 
+            `FFP: <button onclick="showDetails({volume: ${data.plasma.volume}, expirydate: '${data.plasma.expirydate}'})">Details</button>` :
+            'FFP: N/A';
+
+          if (data.prbc) {
+            document.getElementById('hcv').innerText = data.prbc.hcv || 'N/A';
+            document.getElementById('syphilis').innerText = data.prbc.syphilis || 'N/A';
+            document.getElementById('hbsag').innerText = data.prbc.hbsag || 'N/A';
+            document.getElementById('hiv').innerText = data.prbc.hiv || 'N/A';
+            document.getElementById('malaria').innerText = data.prbc.malaria || 'N/A';
+            document.getElementById('screening').innerText = data.prbc.hcv ? 
+              (data.prbc.hcv === 'Reactive' ? 'REACTIVE' : 'NON-REACTIVE') : 'N/A';
+          }
+
+          updateScreeningStatus(data);
+        } else {
+          alert('No data found for this Barcode ID.');
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error);
+      });
+    }
+
+    function clearDetails() {
+      document.getElementById('barcodeid').innerText = 'N/A';
+      document.getElementById('bt').innerText = 'N/A';
+      document.getElementById('rh').innerText = 'N/A';
+      document.getElementById('prbcButton').innerHTML = 'PRBC: N/A';
+      document.getElementById('pcButton').innerHTML = 'PC: N/A';
+      document.getElementById('ffpButton').innerHTML = 'FFP: N/A';
+      document.getElementById('screening').innerText = 'N/A';
+      document.getElementById('hcv').innerText = 'N/A';
+      document.getElementById('syphilis').innerText = 'N/A';
+      document.getElementById('hbsag').innerText = 'N/A';
+      document.getElementById('hiv').innerText = 'N/A';
+      document.getElementById('malaria').innerText = 'N/A';
+    }
+
+    function updateScreeningStatus(data) {
+  const hcv = data.prbc.hcv || 'N/A';
+  const syphilis = data.prbc.syphilis || 'N/A';
+  const hbsag = data.prbc.hbsag || 'N/A';
+  const hiv = data.prbc.hiv || 'N/A';
+  const malaria = data.prbc.malaria || 'N/A';
+
+  const isReactive = [hcv, syphilis, hbsag, hiv, malaria].some(test => test === 'Reactive');
+
+  const screeningElement = document.getElementById('screening');
+  
+  if (isReactive) {
+    screeningElement.className = 'alert red';
+    screeningElement.innerText = 'REACTIVE';
+  } else {
+    screeningElement.className = 'alert green';
+    screeningElement.innerText = 'NON-REACTIVE';
+  }
+}
+
+
+    function showDetails(component) {
+      const modal = document.getElementById('detailsModal');
+      const overlay = document.getElementById('overlay');
+      document.getElementById('componentDetails').innerText = 
+        `Volume: ${component.volume} mL\nExpiry Date: ${component.expirydate}`;
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('detailsModal').style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    function redirectToHome() {
+      window.location.href = '/home.html';
+    }
+  </script>
+</body>
+</html>

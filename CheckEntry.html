@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode and Date Collection Search</title>
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      margin: 50px;
+    }
+    .search-box {
+      margin-bottom: 20px;
+    }
+    .result-box, .selected-box {
+      margin-top: 20px;
+      background-color: #333;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .generate-button {
+      margin-top: 20px;
+      background-color: #f39c12;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Search by Barcode ID or Date of Collection</h1>
+
+    <!-- Barcode ID Search -->
+    <div class="search-box">
+      <h2>Search by Barcode ID:</h2>
+      <label for="component">Select Component:</label>
+      <select id="component">
+        <option value="prbc">PRBC</option>
+        <option value="pc">PC</option>
+        <option value="plasma">Plasma</option>
+      </select>
+      <br><br>
+      <label for="barcode">Enter Barcode ID:</label>
+      <input type="text" id="barcode" placeholder="Enter barcode...">
+      <button onclick="searchBarcode()">Search</button>
+    </div>
+
+    <!-- Date Collection Search -->
+    <div class="search-box">
+      <h2>Search by Date of Collection:</h2>
+      <label for="datecollection">Enter Date of Collection:</label>
+      <input type="date" id="datecollection">
+      <button onclick="searchByDateCollection()">Search by Date</button>
+    </div>
+
+    <!-- Search Results -->
+    <div class="result-box" id="result-box">
+      <h2>Search Results:</h2>
+      <table id="search-results">
+        <thead>
+          <tr>
+            <th>Barcode ID</th>
+            <th>Component</th>
+            <th>Volume</th>
+            <th>Date Collection</th>
+            <th>Expiry Date</th>
+            <th>Screening Result HCV, Syp, HBV, HIV</th>
+            <th>Select</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Selected Results -->
+    <div class="selected-box" id="selected-box">
+      <h2>Selected Barcodes:</h2>
+      <table id="selected-results">
+        <thead>
+          <tr>
+            <th>Barcode ID</th>
+            <th>Component</th>
+            <th>Volume</th>
+            <th>Date Collection</th>
+            <th>Expiry Date</th>
+            <th>Screening Results</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Button to generate Excel file -->
+    <button class="generate-button" onclick="generateExcel()">Generate Excel</button>
+  </div>
+
+  <script>
+    // Function to handle the barcode search
+    function searchBarcode() {
+      const component = document.getElementById('component').value;
+      const barcode = document.getElementById('barcode').value;
+
+      fetch(`/search?component=${component}&query=${barcode}`)
+        .then(response => response.json())
+        .then(data => {
+          const resultsTable = document.getElementById('search-results').getElementsByTagName('tbody')[0];
+          resultsTable.innerHTML = ''; // Clear previous results
+
+          data.forEach(row => {
+            const newRow = resultsTable.insertRow();
+
+            newRow.innerHTML = `
+              <td>${row.barcodeid}</td>
+              <td>${component}</td>
+              <td>${row.volume}</td>
+              <td>${row.datecollection}</td>
+              <td>${row.expirydate}</td>
+              <td>${row.hcv}, ${row.syphilis}, ${row.hbsag}, ${row.hiv}, ${row.malaria}</td>
+              <td><button onclick="addToSelected(this, '${row.barcodeid}', '${component}', '${row.volume}', '${row.datecollection}', '${row.expirydate}', '${row.hcv}, ${row.syphilis}, ${row.hbsag}, ${row.hiv}, ${row.malaria}')">Add</button></td>
+            `;
+          });
+        })
+        .catch(error => console.error('Error fetching barcode:', error));
+    }
+
+    // Function to handle the date of collection search
+    function searchByDateCollection() {
+      const component = document.getElementById('component').value;
+      const datecollection = document.getElementById('datecollection').value;
+
+      fetch(`/search?component=${component}&query=${datecollection}&searchByDate=true`)
+        .then(response => response.json())
+        .then(data => {
+          const resultsTable = document.getElementById('search-results').getElementsByTagName('tbody')[0];
+          resultsTable.innerHTML = ''; // Clear previous results
+
+          data.forEach(row => {
+            const newRow = resultsTable.insertRow();
+
+            newRow.innerHTML = `
+              <td>${row.barcodeid}</td>
+              <td>${component}</td>
+              <td>${row.volume}</td>
+              <td>${row.datecollection}</td>
+              <td>${row.expirydate}</td>
+              <td>${row.hcv}, ${row.syphilis}, ${row.hbsag}, ${row.hiv}, ${row.malaria}</td>
+              <td><button onclick="addToSelected(this, '${row.barcodeid}', '${component}', '${row.volume}', '${row.datecollection}', '${row.expirydate}', '${row.hcv}, ${row.syphilis}, ${row.hbsag}, ${row.hiv}, ${row.malaria}')">Add</button></td>
+            `;
+          });
+        })
+        .catch(error => console.error('Error fetching by date:', error));
+    }
+
+    // Function to add selected result to the table and remove from search results
+    function addToSelected(button, barcodeid, component, volume, datecollection, expirydate, screeningResults) {
+      const selectedTable = document.getElementById('selected-results').getElementsByTagName('tbody')[0];
+      const newRow = selectedTable.insertRow();
+
+      newRow.innerHTML = `
+        <td>${barcodeid}</td>
+        <td>${component}</td>
+        <td>${volume}</td>
+        <td>${datecollection}</td>
+        <td>${expirydate}</td>
+        <td>${screeningResults}</td>
+        <td><button onclick="removeFromSelected(this)">Remove</button></td>
+      `;
+
+      // Remove the selected row from the search results table
+      const searchResultsTable = button.closest('table').getElementsByTagName('tbody')[0];
+      const rowToRemove = button.closest('tr');
+      searchResultsTable.removeChild(rowToRemove);
+    }
+
+    // Function to remove a selected result from the table
+    function removeFromSelected(button) {
+      const row = button.parentElement.parentElement; // Get the row of the clicked button
+      row.remove(); // Remove the row from the table
+    }
+
+    // Function to collect selected data and send to the server for Excel generation
+    function generateExcel() {
+      const selectedTable = document.getElementById('selected-results').getElementsByTagName('tbody')[0];
+      const rows = selectedTable.getElementsByTagName('tr');
+      const selectedData = [];
+
+      // Collect data from each selected row
+      for (let row of rows) {
+        const columns = row.getElementsByTagName('td');
+        selectedData.push({
+          barcodeid: columns[0].innerText,
+          component: columns[1].innerText,
+          volume: columns[2].innerText,
+          datecollection: columns[3].innerText,
+          expirydate: columns[4].innerText,
+          screeningResults: columns[5].innerText
+        });
+      }
+
+      // Send the collected data to the server
+      fetch('/generate-excel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ selectedData })
+      })
+      .then(response => {
+        if (response.ok) {
+          alert('Excel file generated successfully!');
+        } else {
+          alert('Failed to generate Excel file.');
+        }
+      })
+      .catch(error => console.error('Error generating Excel:', error));
+    }
+  </script>
+</body>
+</html>

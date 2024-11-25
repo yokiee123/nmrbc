@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Processing - Northern Mindanao Regional Blood Center</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f4f4; 
+            color: #333;
+            padding: 20px;
+        }
+        h1 { 
+            color: maroon; 
+            margin-bottom: 20px;
+        }
+        form { 
+            background-color: #fff; 
+            padding: 20px; 
+            border-radius: 5px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+            max-width: 800px;
+            margin: auto;
+        }
+        label { 
+            display: block; 
+            margin: 10px 0 5px; 
+            font-weight: bold;
+        }
+        .barcode-container { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 10px; 
+            flex-wrap: wrap;
+        }
+        .barcode-input, .date-input, .component-select, .volume-input { 
+            padding: 8px; 
+            margin-right: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            flex: 1;
+            min-width: 150px;
+        }
+        .delete-button { 
+            background: none; 
+            border: none; 
+            color: red; 
+            cursor: pointer; 
+            font-size: 20px; 
+            margin-left: 10px;
+        }
+        button { 
+            background-color: maroon; 
+            color: #fff; 
+            border: none; 
+            padding: 10px 15px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        button:hover { 
+            background-color: darkred; 
+        }
+        .add-button { 
+            background-color: green; 
+            margin-top: 20px;
+        }
+        .add-button:hover { 
+            background-color: darkgreen; 
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enter Data</h1>
+	<h2>Please Verify Data Before Submission</h2>
+	<h3>Especially Date of Collection</h3>
+    <form id="dataForm" action="/submit" method="post">
+        <div id="barcode-container">
+            <div class="barcode-container">
+                <input type="text" name="barcodes" class="barcode-input" placeholder="Enter Barcode ID" required>
+                <input type="text" name="dates" class="date-input" id="dateInput" required>
+                <select name="components" class="component-select" required>
+                    <option value=""disabled selected>Select Component</option>
+                    <option value="PRBC">Packed Red Blood Cells</option>
+                    <option value="PC">Platelet Concentrate</option>
+                    <option value="PLASMA">Fresh Frozen Plasma</option>
+                    <option value="WB">Whole Blood</option>
+                    <option value="CRYO">Cryoprecipitate</option>
+                </select>
+                <input type="number" name="volumes" class="volume-input" placeholder="Volume (mL)" required>
+                <button type="button" class="delete-button" onclick="removeBarcode(this)">×</button>
+            </div>
+        </div>
+        <button type="button" class="add-button" onclick="addBarcode()">Add Component</button>
+        <button type="button" class="add-button" onclick="addSameBarcode()">Add Same Barcode</button>
+        <button type="submit">Submit</button>
+    </form>
+
+    <button onclick="redirectToHome()">Home</button>
+    <button class="add-button" onclick="location.href='http://192.168.0.119:7777/worksheet.html'">Make Worklist</button>
+    <button class="add-button" onclick="location.href='http://192.168.0.119:8888/CheckEntry.html'">Check Entry</button>
+
+    <script>
+        // Function to get today's date in mm/dd/yyyy format
+        function getCurrentDateFormatted() {
+            const today = new Date();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const year = today.getFullYear();
+            return `${month}/${day}/${year}`;
+        }
+
+        // Set the initial date input to today's date
+        document.getElementById('dateInput').value = getCurrentDateFormatted();
+
+        // Function to add a new component row
+        function addBarcode() {
+            const container = document.getElementById('barcode-container');
+            const firstDateInput = document.querySelector('.date-input').value; // Get the date from the first input
+
+            const newBarcode = document.createElement('div');
+            newBarcode.className = 'barcode-container';
+            newBarcode.innerHTML = `
+                <input type="text" name="barcodes" class="barcode-input" placeholder="Enter Barcode ID" required>
+                <input type="text" name="dates" class="date-input" value="${firstDateInput}" required>
+                <select name="components" class="component-select" required>
+                    <option value=""disabled selected>Select Component</option>
+                    <option value="PRBC">Packed Red Blood Cells</option>
+                    <option value="PC">Platelet Concentrate</option>
+                    <option value="PLASMA">Fresh Frozen Plasma</option>
+                    <option value="WB">Whole Blood</option>
+                    <option value="CRYO">Cryoprecipitate</option>
+                </select>
+                <input type="number" name="volumes" class="volume-input" placeholder="Volume (mL)" required>
+                <button type="button" class="delete-button" onclick="removeBarcode(this)">×</button>
+            `;
+            container.appendChild(newBarcode);
+        }
+
+        // Function to add a row with the same barcode as the previous row
+        function addSameBarcode() {
+            const container = document.getElementById('barcode-container');
+            const lastBarcodeInput = container.lastElementChild.querySelector('.barcode-input').value; // Get the barcode from the last input
+            const firstDateInput = document.querySelector('.date-input').value; // Get the date from the first input
+
+            const newBarcode = document.createElement('div');
+            newBarcode.className = 'barcode-container';
+            newBarcode.innerHTML = `
+                <input type="text" name="barcodes" class="barcode-input" value="${lastBarcodeInput}" required>
+                <input type="text" name="dates" class="date-input" value="${firstDateInput}" required>
+                <select name="components" class="component-select" required>
+                    <option value=""disabled selected>Select Component</option>
+                    <option value="PRBC">Packed Red Blood Cells</option>
+                    <option value="PC">Platelet Concentrate</option>
+                    <option value="PLASMA">Fresh Frozen Plasma</option>
+                    <option value="WB">Whole Blood</option>
+                    <option value="CRYO">Cryoprecipitate</option>
+                </select>
+                <input type="number" name="volumes" class="volume-input" placeholder="Volume (mL)" required>
+                <button type="button" class="delete-button" onclick="removeBarcode(this)">×</button>
+            `;
+            container.appendChild(newBarcode);
+        }
+
+        // Function to remove a row
+        function removeBarcode(button) {
+            const container = button.parentElement;
+            container.remove();
+        }
+    </script>
+    <script src="redirecttohome.js"></script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make Worklist</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .add-button {
+            padding: 10px 20px;
+            background-color: maroon;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+            text-align: center;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover, .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Button to Open Modal -->
+    <button class="add-button" onclick="makeworklist()">Make Worklist</button>
+
+    <!-- Modal for Component and Date Selection -->
+    <div id="worklistModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Choose Component and Date</h2>
+            <div class="modal-body">
+                <label for="component-select">Component:</label>
+                <select id="component-select">
+                    <option value="prbc">PRBC</option>
+                    <option value="pc">PC</option>
+                    <option value="plasma">Plasma</option>
+                </select>
+                <br><br>
+                <label for="date-select">Date:</label>
+                <input type="date" id="date-select">
+                <br><br>
+                <button onclick="generateBarcodeList()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table for Barcode Selection -->
+    <div id="barcode-list" style="display: none;">
+        <h3>Select Barcodes</h3>
+        <p id="result-count">Number of barcodes: 0</p> <!-- Counter for number of results -->
+
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"> Select All</th>
+                    <th>Barcode ID</th>
+                    <th>Volume</th>
+                    <th>Date Collected</th>
+                </tr>
+            </thead>
+            <tbody id="barcode-table-body">
+                <!-- Barcode rows will be added here -->
+            </tbody>
+        </table>
+        <button onclick="generateExcel()">Generate Excel</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script>
+        // Function to open the modal
+        function makeworklist() {
+            document.getElementById('worklistModal').style.display = 'flex';
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            document.getElementById('worklistModal').style.display = 'none';
+        }
+
+        // Function to count the number of selected barcodes
+        function updateBarcodeCount() {
+            const checkboxes = document.querySelectorAll('.barcode-checkbox');
+            let count = 0;
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    count++;
+                }
+            });
+            document.getElementById('result-count').innerText = `Number of barcodes: ${count}`;
+        }
+
+        // Function to generate the barcode list based on selected component and date
+        async function generateBarcodeList() {
+            const component = document.getElementById('component-select').value;
+            const date = document.getElementById('date-select').value;
+
+            // Close the modal
+            closeModal();
+
+            // Fetch the barcodes from the server based on the selected component and date
+            try {
+                const response = await fetch('/getBarcodes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ component, date })
+                });
+                const data = await response.json();
+                
+                // Display the barcode list
+                const tableBody = document.getElementById('barcode-table-body');
+                tableBody.innerHTML = '';
+                data.forEach((item) => {
+                    // Format the date collection to MM/DD/YYYY
+                    const formattedDate = new Date(item.datecollection).toLocaleDateString('en-US');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><input type="checkbox" class="barcode-checkbox" data-barcode="${item.barcodeid}" onchange="updateBarcodeCount()"></td>
+                        <td>${item.barcodeid}</td>
+                        <td>${item.volume}</td>
+                        <td>${formattedDate}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                document.getElementById('barcode-list').style.display = 'block';
+                updateBarcodeCount(); // Update count when barcodes are generated
+            } catch (error) {
+                console.error('Error fetching barcode list:', error);
+            }
+        }
+
+        // Function to toggle "Select All" checkboxes
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('.barcode-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = source.checked;
+            });
+            updateBarcodeCount(); // Update count when selecting all
+        }
+
+        // Function to generate the Excel file based on selected barcodes
+        async function generateExcel() {
+            const checkboxes = document.querySelectorAll('#barcode-table-body input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one barcode to include in the worklist.');
+                return;
+            }
+
+            // Fetch the pre-made template from the server (template.xlsx should be placed in the server directory)
+            try {
+                const response = await fetch('/template.xlsx');
+                const data = await response.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Create a new sheet for the selected barcodes
+                const selectedBarcodes = [];
+                checkboxes.forEach(checkbox => {
+                    const barcodeId = checkbox.dataset.barcode;
+                    const rowData = [...checkbox.closest('tr').children].slice(1).map(td => td.innerText); // Get data from the row
+                    selectedBarcodes.push([barcodeId, ...rowData]); // Create an array of barcode data
+                });
+
+                // Create a new worksheet and add data
+                const newWorksheet = XLSX.utils.aoa_to_sheet(selectedBarcodes);
+                XLSX.utils.book_append_sheet(workbook, newWorksheet, 'Selected Barcodes');
+
+                // Write the modified workbook to an Excel file
+                XLSX.writeFile(workbook, 'worklist.xlsx');
+            } catch (error) {
+                console.error('Error generating Excel file:', error);
+            }
+        }
+    </script>
+</body>
+</html>

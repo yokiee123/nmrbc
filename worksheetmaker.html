@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Search</title>
+    <style>
+        body {
+            background-color: maroon;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            padding: 20px;
+        }
+        .left-section {
+            width: 30%;
+            padding-right: 20px;
+            overflow-y: auto;
+            height: 80vh; /* To allow scrolling */
+        }
+        .right-section {
+            width: 70%;
+        }
+        h1 {
+            font-size: 28px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 70%;
+            margin: 10px;
+        }
+        button {
+            padding: 10px;
+            background-color: white;
+            color: black;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .results {
+            margin-top: 20px;
+            border: 1px solid white;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            color: black;
+        }
+        .result-table th, .result-table td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-section">
+        <h1>Search Results</h1>
+        <div id="resultsContainer"></div>
+    </div>
+
+    <div class="right-section">
+        <h1>Database Search</h1>
+        
+        <label for="tableSelect">Select Table:</label>
+        <select id="tableSelect">
+            <option value="prbc">PRBC</option>
+            <option value="pc">PC</option>
+            <option value="plasma">Plasma</option>
+        </select>
+        
+        <input type="text" id="searchBox" placeholder="Search...">
+        <button id="searchButton">Search</button>
+
+        <div id="resultDetails" class="results hidden">
+            <h2>Search Details</h2>
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th>Barcode ID</th>
+                        <th>Volume</th>
+                        <th>Date Collected</th>
+                        <th>BT</th>
+                        <th>RH</th>
+                        <th>Expiry Date</th>
+                        <th>HCV</th>
+                        <th>Syphilis</th>
+                        <th>HBsAg</th>
+                        <th>HIV</th>
+                        <th>Malaria</th>
+                    </tr>
+                </thead>
+                <tbody id="detailsContainer"></tbody>
+            </table>
+            <button id="addAnotherButton" class="hidden">Add Another</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchButton').addEventListener('click', function() {
+            const table = document.getElementById('tableSelect').value;
+            const query = document.getElementById('searchBox').value;
+            searchDatabase(table, query);
+        });
+
+        function searchDatabase(table, query) {
+            fetch(`/search?table=${table}&query=${query}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data[table].length > 0) {
+                        displayResults(data[table]);
+                    } else {
+                        alert('No results found.');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching data:', err);
+                });
+        }
+
+        function displayResults(data) {
+            const detailsContainer = document.getElementById('detailsContainer');
+            detailsContainer.innerHTML = ''; // Clear previous results
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.barcodeid}</td>
+                    <td>${item.volume}</td>
+                    <td>${item.datecollection}</td>
+                    <td>${item.bt}</td>
+                    <td>${item.rh}</td>
+                    <td>${item.expirydate}</td>
+                    <td>${item.hcv}</td>
+                    <td>${item.syphilis}</td>
+                    <td>${item.hbsag}</td>
+                    <td>${item.hiv}</td>
+                    <td>${item.malaria}</td>
+                `;
+                detailsContainer.appendChild(row);
+            });
+
+            document.getElementById('addAnotherButton').classList.remove('hidden');
+            document.getElementById('resultDetails').classList.remove('hidden');
+        }
+
+        document.getElementById('addAnotherButton').addEventListener('click', function() {
+            const query = document.getElementById('searchBox').value;
+            const table = document.getElementById('tableSelect').value;
+            searchDatabase(table, query);
+        });
+    </script>
+
+</body>
+</html>

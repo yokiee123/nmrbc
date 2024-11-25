@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Database</title>
+  <style>
+    body {
+      background-color: #1a1a1a;
+      color: #f0f0f0;
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    h1, h2 {
+      color: #66ff66; /* Light green color for headings */
+    }
+    label {
+      margin-right: 10px;
+    }
+    select, input[type="text"], button {
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    select, input[type="text"] {
+      width: 200px; /* Reduced width for input and select */
+    }
+    button {
+      background-color: #009933; /* Green button color */
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #007a29; /* Darker green on hover */
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #444;
+    }
+    th {
+      background-color: #2a2a2a;
+    }
+    tr:hover {
+      background-color: #333;
+    }
+    .removeBtn {
+      background-color: #ff3333; /* Red button for removal */
+    }
+    .removeBtn:hover {
+      background-color: #cc0000; /* Darker red on hover */
+    }
+
+    /* Print only the content table */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #selectedBarcodes, #selectedBarcodes * {
+        visibility: visible;
+      }
+      #selectedBarcodes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Search Barcode IDs</h1>
+  
+  <!-- Dropdown to choose component -->
+  <label for="component">Choose Component:</label>
+  <select id="component">
+    <option value="prbc">PRBC</option>
+    <option value="pc">PC</option>
+    <option value="plasma">Plasma</option>
+  </select>
+  
+  <!-- Search box -->
+  <input type="text" id="searchBox" placeholder="Search Barcode ID...">
+  <button id="searchBtn">Search</button> <!-- New search button -->
+  <div id="suggestions"></div>
+
+  <!-- Selected barcode details container -->
+  <div>
+    <h2>Selected Barcode IDs:</h2>
+    <table id="selectedBarcodes">
+      <tr>
+        <th>Barcode ID</th>
+        <th>Component</th>
+        <th>Volume</th>
+        <th>Date Collection</th>
+        <th>Expiry Date</th>
+        <th>HCV</th>
+        <th>Syphilis</th>
+        <th>HBsAg</th>
+        <th>HIV</th>
+        <th>Malaria</th>
+        <th>Action</th> <!-- New Action Column -->
+      </tr>
+    </table>
+  </div>
+  
+  <!-- Action buttons -->
+  <button id="printBtn" onclick="window.print()">Print Transmittal</button>
+  <button id="distributeBtn">Distribute</button>
+
+  <!-- Print Sticker Button -->
+  <button id="printStickerBtn">Print Sticker</button>
+
+  <script src="app.js"></script>
+
+  <script>
+    // Print Sticker Functionality
+    document.getElementById('printStickerBtn').addEventListener('click', () => {
+        const barcodeId = document.getElementById('searchBox').value; // Fetch the selected barcode
+
+        fetch('/generate-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ barcodeid: barcodeId }),
+        })
+        .then(res => res.blob())
+        .then(blob => {
+            // Create a link to download the PDF
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'sticker.pdf');
+            document.body.appendChild(link);
+            link.click();
+        })
+        .catch(err => console.error(err));
+    });
+  </script>
+
+</body>
+</html>

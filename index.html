@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Northern Mindanao Regional Blood Center</title>
+    <style>
+        body {
+            background-color: darkred;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 150px;
+        }
+        .login-box {
+            background-color: white;
+            color: maroon;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            text-align: left;
+        }
+        h1 {
+            font-size: 28px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        input[type="submit"] {
+            background-color: darkred;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 5px;
+        }
+        input[type="submit"]:hover {
+            background-color: maroon;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Northern Mindanao Regional Blood Center</h1>
+    <div class="login-box">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" required><br>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" required><br>
+            <input type="submit" value="Login">
+        </form>
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent form submission
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (username === 'admin' && password === 'admin') {
+                window.location.href = 'home.html'; // Redirect to the dashboard
+            } else {
+                document.getElementById('error').textContent = 'Invalid username or password!';
+            }
+        });
+    </script>
+
+</body>
+</html>

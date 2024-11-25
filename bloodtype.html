@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Typing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        table {
+            width: 50%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: darkred;
+            color: white;
+        }
+
+        .form-container {
+            margin: 20px;
+        }
+
+        input[type="text"], select {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: darkred;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: red;
+        }
+
+        .result-table {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Blood Typing</h1>
+    
+    <div class="form-container">
+        <input type="text" id="barcodeInput" placeholder="Enter Barcode" onkeypress="handleKeyPress(event)" />
+        <button onclick="searchBarcode()">Search</button>
+    </div>
+
+    <div id="resultContainer"></div>
+
+    <script>
+        async function searchBarcode() {
+            const barcode = document.getElementById('barcodeInput').value;
+
+            const response = await fetch('/search', 
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode: barcode })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                document.getElementById('resultContainer').innerHTML = `<p>${data.error}</p>`;
+            } else {
+                let resultHtml = '';
+
+                if (data.prbc) {
+                    resultHtml += `
+                        <h3>Packed Red Cells (PRBC)</h3>
+                        <table class="result-table">
+                            <thead>
+                                <tr>
+                                    <th>Barcode ID</th>
+                                    <th>Date Collected</th>
+                                    <th>Volume</th>
+                                    <th>Blood Type</th>
+                                    <th>Rh Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>${data.prbc.barcodeid}</td>
+                                    <td>${formatDate(data.prbc.datecollection)}</td>
+                                    <td>${data.prbc.volume}</td>
+                                    <td>${data.prbc.bt || 'Not set'}</td>
+                                    <td>${data.prbc.rh || 'Not set'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                if (data.pc) {
+                    resultHtml += `
+                        <h3>Platelet Concentrate (PC)</h3>
+                        <table class="result-table">
+                            <thead>
+                                <tr>
+                                    <th>Barcode ID</th>
+                                    <th>Date Collected</th>
+                                    <th>Volume</th>
+                                    <th>Blood Type</th>
+                                    <th>Rh Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>${data.pc.barcodeid}</td>
+                                    <td>${formatDate(data.pc.datecollection)}</td>
+                                    <td>${data.pc.volume}</td>
+                                    <td>${data.pc.bt || 'Not set'}</td>
+                                    <td>${data.pc.rh || 'Not set'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                if (data.plasma) {
+                    resultHtml += `
+                        <h3>Fresh Frozen Plasma (PLASMA)</h3>
+                        <table class="result-table">
+                            <thead>
+                                <tr>
+                                    <th>Barcode ID</th>
+                                    <th>Date Collected</th>
+                                    <th>Volume</th>
+                                    <th>Blood Type</th>
+                                    <th>Rh Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>${data.plasma.barcodeid}</td>
+                                    <td>${formatDate(data.plasma.datecollection)}</td>
+                                    <td>${data.plasma.volume}</td>
+                                    <td>${data.plasma.bt || 'Not set'}</td>
+                                    <td>${data.plasma.rh || 'Not set'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                resultHtml += `
+                    <h3>Add Blood Type</h3>
+                    <select id="bloodtype">
+                        <option value="">Select Blood Type</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="O">O</option>
+                        <option value="AB">AB</option>
+                    </select>
+                    <select id="rh">
+                        <option value="">Select Rh Type</option>
+                        <option value="Positive">Positive</option>
+                        <option value="Negative">Negative</option>
+                    </select>
+                    <button onclick="addBloodType('${data.prbc ? data.prbc.barcodeid : ''}')">Add Blood Type</button>
+                `;
+
+                document.getElementById('resultContainer').innerHTML = resultHtml;
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                searchBarcode();
+            }
+        }
+
+        async function addBloodType(barcode) {
+            const bloodtype = document.getElementById('bloodtype').value;
+            const rh = document.getElementById('rh').value;
+
+            // Check if both options are selected
+            if (bloodtype === '' || rh === '') {
+                alert('Please select both Blood Type and Rh Type before saving.');
+                return;
+            }
+
+            const response = await fetch('/addBloodType', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode: barcode, bloodtype: bloodtype, rh: rh })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Blood type and Rh type added successfully!');
+                searchBarcode(); // Refresh the search result after updating
+            } else {
+                alert('Error updating blood type. Please try again.');
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric'
+            });
+        }
+    </script>
+    <p><a href="/home.html">Return to Home</a></p>
+</body>
+</html>

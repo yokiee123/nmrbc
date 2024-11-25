@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #800000; /* Maroon background */
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #333;
+    }
+    .container {
+      width: 70%;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+    }
+    .left, .right {
+      padding: 20px;
+    }
+    .left {
+      background-color: #f7f7f9;
+      width: 30%;
+      border-right: 1px solid #ddd;
+    }
+    .right {
+      width: 70%;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f9;
+    }
+    .alert {
+      font-size: 30px;
+      font-weight: bold;
+      padding: 30px;
+      border-radius: 4px;
+      display: inline-block;
+      margin: 5px 0;
+    }
+    .red {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .green {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .button-group button {
+      margin: 5px 0;
+      width: 100%;
+    }
+    #detailsModal {
+      display: none; /* Hidden by default */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 20px;
+      z-index: 1000;
+    }
+    #overlay {
+      display: none; /* Hidden by default */
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="left">
+      <h2>Search Barcode</h2>
+      <input type="text" id="barcode" placeholder="Enter Barcode">
+      <button onclick="searchBarcode()">Search</button>
+    </div>
+    <div class="right">
+      <table id="resultTable">
+        <tr>
+          <th>Details</th>
+          <th>Information</th>
+        </tr>
+        <tr>
+          <td>BARCODE ID</td>
+          <td id="barcodeid">N/A</td>
+        </tr>
+        <tr>
+          <td>BLOOD TYPE</td>
+          <td id="bt">N/A</td>
+        </tr>
+        <tr>
+          <td>RH TYPE</td>
+          <td id="rh">N/A</td>
+        </tr>
+        <tr>
+          <td>COMPONENTS</td>
+          <td class="button-group" id="componentButtons">
+            <span id="prbcButton">PRBC: N/A</span><br>
+            <span id="pcButton">PC: N/A</span><br>
+            <span id="ffpButton">FFP: N/A</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Screening Results</td>
+          <td id="screening">N/A</td>
+        </tr>
+      </table>
+      <button onclick="window.print()">Print Results</button>
+      <button onclick="redirectToHome()">Back to Home</button>
+    </div>
+  </div>
+
+  <div id="detailsModal">
+    <h2>Component Details</h2>
+    <p id="componentDetails"></p>
+    <button onclick="closeModal()">Close</button>
+  </div>
+
+  <div id="overlay" onclick="closeModal()"></div>
+
+  <script>
+    let resultData;
+
+    function searchBarcode() {
+      const barcode = document.getElementById('barcode').value;
+      
+      if (barcode.trim() === '') {
+        clearDetails();
+        return; // Exit the function
+      }
+
+      fetch('/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcodeid: barcode }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        resultData = data;
+
+        if (data.prbc || data.pc || data.plasma) {
+          document.getElementById('barcodeid').innerText = data.prbc ? data.prbc.barcodeid : 'N/A';
+          document.getElementById('bt').innerText = data.prbc ? data.prbc.bt : 'N/A';
+          document.getElementById('rh').innerText = data.prbc ? data.prbc.rh : 'N/A';
+
+          document.getElementById('prbcButton').innerHTML = data.prbc ? 
+            `PRBC: <button onclick="showDetails({volume: ${data.prbc.volume}, expirydate: '${data.prbc.expirydate}'})">Details</button>` :
+            'PRBC: N/A';
+
+          document.getElementById('pcButton').innerHTML = data.pc ? 
+            `PC: <button onclick="showDetails({volume: ${data.pc.volume}, expirydate: '${data.pc.expirydate}'})">Details</button>` :
+            'PC: N/A';
+
+          document.getElementById('ffpButton').innerHTML = data.plasma ? 
+            `FFP: <button onclick="showDetails({volume: ${data.plasma.volume}, expirydate: '${data.plasma.expirydate}'})">Details</button>` :
+            'FFP: N/A';
+        } else {
+          clearDetails();
+          document.getElementById('componentButtons').innerText = 'No components processed.';
+        }
+
+        checkScreeningResults(data);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error fetching data. Please try again.');
+      });
+    }
+
+    function clearDetails() {
+      document.getElementById('barcodeid').innerText = 'N/A';
+      document.getElementById('bt').innerText = 'N/A';
+      document.getElementById('rh').innerText = 'N/A';
+      document.getElementById('screening').innerText = 'N/A';
+      document.getElementById('componentButtons').innerHTML = `
+        <span id="prbcButton">PRBC: N/A</span><br>
+        <span id="pcButton">PC: N/A</span><br>
+        <span id="ffpButton">FFP: N/A</span>
+      `;
+    }
+
+    function showDetails(componentData) {
+      const details = `Volume: ${componentData.volume} mL\nExpiry Date: ${componentData.expirydate}`;
+      
+      // Update the modal content
+      document.getElementById('componentDetails').innerText = details;
+      
+      // Show the modal and overlay
+      document.getElementById('detailsModal').style.display = 'block';
+      document.getElementById('overlay').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('detailsModal').style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    function checkScreeningResults(data) {
+      let reactive = false;
+
+      ['prbc', 'pc', 'plasma'].forEach(component => {
+        if (data[component]) {
+          const { hcv, syphilis, hbsag, hiv, malaria } = data[component];
+          if ([hcv, syphilis, hbsag, hiv, malaria].includes('REACTIVE')) {
+            reactive = true;
+          }
+        }
+      });
+
+      if (reactive) {
+        document.getElementById('screening').innerHTML = `<span class="alert red">REACTIVE</span>`;
+        document.querySelector('.right').style.backgroundColor = '#f8d7da'; // Red background
+      } else {
+        document.getElementById('screening').innerHTML = `<span class="alert green">NON-REACTIVE</span>`;
+        document.querySelector('.right').style.backgroundColor = '#d4edda'; // Green background
+      }
+    }
+
+    function redirectToHome() {
+      window.location.href = '/home.html';
+    }
+  </script>
+</body>
+</html>
