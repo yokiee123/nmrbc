@@ -533,6 +533,15 @@
       overflow: hidden;
     }
 
+
+    /* Shared forms gallery, positioned on the right panel. */
+    .dashboard-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:2px solid rgba(255,255,255,.25); margin-bottom:18px; padding-bottom:12px; }
+    .dashboard-heading h2 { border:0; margin:0; padding:0; }
+    .forms-button { display:inline-flex; align-items:center; white-space:nowrap; gap:8px; background:#fff; color:#8b0000; border:1px solid rgba(255,255,255,.8); border-radius:9px; text-decoration:none; padding:11px 18px; font-weight:700; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.2); transition:background .15s,transform .15s; }
+    .forms-button:hover { background:#ffe6e6; transform:translateY(-2px); }
+    .forms-button:focus-visible { outline:3px solid #ffd060; outline-offset:4px; }
+    @media(max-width:480px) { .forms-button { padding:10px 12px; font-size:12px; } .dashboard-heading { gap:8px; } }
+
   </style>
 </head>
 
@@ -672,9 +681,10 @@
 
     <section class="panel">
 
-      <h2>
-        Main Dashboard
-      </h2>
+      <div class="dashboard-heading">
+        <h2>Main Dashboard</h2>
+        <a class="forms-button" href="forms/index.html" aria-label="Open forms gallery">📋 FORMS</a>
+      </div>
 
 
       <div class="center-options">
@@ -1227,4 +1237,3 @@
 
 </body>
 </html>
-```
