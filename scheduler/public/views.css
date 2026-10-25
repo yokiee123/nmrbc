@@ -1107,3 +1107,29 @@ body.roster-fullscreen #rosterHint {
   .send-card-team li small { font-size: 8px; }
   .send-view-actions .button { font-size: 10px; padding: 7px 3px; }
 }
+
+/* MBD ACTIVITY DETAIL VENUE: match Send View hierarchy. */
+#mainDialog .activity-detail-hero > h3 {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.2;
+  margin: 7px 0 3px;
+}
+#mainDialog .activity-detail-hero > .activity-detail-venue {
+  margin: 6px 0 10px;
+  color: #81243a;
+  font-size: 21px;
+  font-weight: 850;
+  line-height: 1.14;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+[data-theme="dark"] #mainDialog .activity-detail-hero > .activity-detail-venue {
+  color: #ffbcc9;
+}
+@media (max-width: 360px) {
+  #mainDialog .activity-detail-hero > .activity-detail-venue {
+    font-size: 19px;
+  }
+}
