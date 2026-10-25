@@ -150,7 +150,7 @@ function download(text, name, type) {
 function openDialog(title, body, kind = "") {
   if (s.saving) return;
   const backDay = $("mainDialog").dataset.dayView;
-  $("mainDialog").classList.remove("day-view-dialog", "print-view-dialog");
+  $("mainDialog").classList.remove("day-view-dialog", "print-view-dialog", "send-view-dialog");
   delete $("mainDialog").dataset.dayView;
   if (kind) $("mainDialog").classList.add(kind);
   $("dialogTitle").textContent = title;
@@ -622,8 +622,9 @@ function eventDetails(id, personId = null, date = null) {
   const crew = crewFor(id);
   openDialog(
     "Activity details",
-    `<div class="detail-hero"><span class="status ${h(e.status)}">${h(e.status)}</span><h3>${h(e.title)}</h3><p>${h(e.location)}</p><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.location)}" target="_blank" rel="noopener noreferrer">Open location in Maps ↗</a></div>${e.status === "cancelled" ? '<p class="driver-warning">⚠  Cancelled. Personnel still marked ⚠  Reassign need a new assignment.</p>' : ""}${needsDriver(e, s.data) ? '<p class="driver-warning" role="status">⚠  No driver confirmed. Driver arrangement is pending.</p>' : ""}<dl class="detail-grid"><div><dt>Event date</dt><dd>${h(formatDate(e.event_date))}</dd></div><div><dt>Call time · Philippine time</dt><dd>${h(e.call_time.slice(0, 5))} PHT${e.end_time ? " · Ends " + h(e.end_time.slice(0, 5)) : ""}</dd></div><div><dt>Expected donors</dt><dd>${e.expected_donors}</dd></div><div><dt>RPO number</dt><dd>${h(e.rpo_number || "Not entered")}</dd></div><div><dt>Vehicle</dt><dd>${h(e.vehicle_name || "For arrangement")}<p>${h(e.vehicle_details || "")}</p></dd></div><div><dt>Driver</dt><dd>${h(driverLabel(e, s.data.personnel))}</dd></div><div><dt>Transport / meeting point</dt><dd>${h(e.transport || "To be confirmed")}</dd></div><div><dt>Companions</dt><dd>${companionsMarkup(crew, e)}</dd></div><div><dt>Contact person</dt><dd>${h(e.contact_person || "To be confirmed")}</dd></div></dl><div class="detail-notes"><h4>Additional details</h4><p>${h(e.notes || "No additional instructions.")}</p></div><div class="form-actions"><button class="button outline" id="calendarDownload">Add to calendar</button>${s.admin ? `<button class="button primary" data-edit-event="${e.id}">Edit event & team</button>${personId ? '<button class="button outline" id="editMbdCell">Change this assignment</button>' : ""}` : ""}</div>`,
+    `<div class="detail-hero"><span class="status ${h(e.status)}">${h(e.status)}</span><h3>${h(e.title)}</h3><p>${h(e.location)}</p><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.location)}" target="_blank" rel="noopener noreferrer">Open location in Maps ↗</a></div>${e.status === "cancelled" ? '<p class="driver-warning">⚠  Cancelled. Personnel still marked ⚠  Reassign need a new assignment.</p>' : ""}${needsDriver(e, s.data) ? '<p class="driver-warning" role="status">⚠  No driver confirmed. Driver arrangement is pending.</p>' : ""}<dl class="detail-grid"><div><dt>Event date</dt><dd>${h(formatDate(e.event_date))}</dd></div><div><dt>Call time · Philippine time</dt><dd>${h(e.call_time.slice(0, 5))} PHT${e.end_time ? " · Ends " + h(e.end_time.slice(0, 5)) : ""}</dd></div><div><dt>Expected donors</dt><dd>${e.expected_donors}</dd></div><div><dt>RPO number</dt><dd>${h(e.rpo_number || "Not entered")}</dd></div><div><dt>Vehicle</dt><dd>${h(e.vehicle_name || "For arrangement")}<p>${h(e.vehicle_details || "")}</p></dd></div><div><dt>Driver</dt><dd>${h(driverLabel(e, s.data.personnel))}</dd></div><div><dt>Transport / meeting point</dt><dd>${h(e.transport || "To be confirmed")}</dd></div><div><dt>Companions</dt><dd>${companionsMarkup(crew, e)}</dd></div><div><dt>Contact person</dt><dd>${h(e.contact_person || "To be confirmed")}</dd></div></dl><div class="detail-notes"><h4>Additional details</h4><p>${h(e.notes || "No additional instructions.")}</p></div><div class="form-actions"><button class="button primary" id="sendViewButton" type="button">Send View</button><button class="button outline" id="calendarDownload">Add to calendar</button>${s.admin ? `<button class="button primary" data-edit-event="${e.id}">Edit event & team</button>${personId ? '<button class="button outline" id="editMbdCell">Change this assignment</button>' : ""}` : ""}</div>`,
   );
+  $("sendViewButton").onclick = () => sendView(id, personId, date);
   $("calendarDownload").onclick = () =>
     download(
       calendarFile(
@@ -642,6 +643,97 @@ function eventDetails(id, personId = null, date = null) {
   if (s.admin && personId)
     $("editMbdCell").onclick = () => assignmentForm(personId, date);
 }
+// Compact, read-only summary intended for a single mobile screenshot.
+function sendView(id, personId = null, date = null) {
+  const e = eventBy(id);
+  if (!e) return;
+  const crew = orderedPeople(crewFor(id));
+  const timeLabel = (value) => {
+    const match = /^(\d{1,2}):(\d{2})/.exec(value || "");
+    if (!match) return "To be confirmed";
+    const hour = Number(match[1]);
+    return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? "AM" : "PM"}`;
+  };
+  const detail = (label, value, extra = "") =>
+    `<div class="send-info ${extra}"><span>${label}</span><strong>${h(value)}</strong></div>`;
+  const companions = crew.map((p) =>
+    `<li><span>${h(p.name)}</span><small>${h(roleOf(p))}</small></li>`
+  );
+  if (e.driver_mode === "other")
+    companions.push(`<li><span>${h(e.other_driver_name || "For arrangement")}</span><small>External driver</small></li>`);
+  const fullDate = formatDate(e.event_date, {
+    weekday: "long", day: "numeric", month: "short", year: "numeric",
+  });
+  const callTime = timeLabel(e.call_time);
+  const endTime = e.end_time ? timeLabel(e.end_time) : "";
+  openDialog(
+    "Send View",
+    `<div class="send-view-shell ${companions.length > 9 ? "send-view-dense" : ""}" id="sendViewShell">
+      <div class="send-view-actions">
+        <button type="button" class="button outline" id="sendViewBack">← Details</button>
+        <button type="button" class="button primary" id="sendViewCapture">Screenshot mode</button>
+        <button type="button" class="button outline" data-close>Close</button>
+      </div>
+      <article class="send-view-card" id="sendViewCard" aria-label="Activity summary for screenshot" tabindex="0">
+        <header class="send-card-header">
+          <div class="send-card-brand"><span>NMRBC</span><span>ACTIVITY BRIEF</span></div>
+          <div class="send-card-title-row"><h2>${h(e.title)}</h2><span class="send-card-status ${h(e.status)}">${h(e.status)}</span></div>
+          <p class="send-card-location">${h(e.location || "Venue to be confirmed")}</p>
+        </header>
+        <section class="send-card-when" aria-label="Event date and time">
+          <div><span>DATE</span><strong>${h(fullDate)}</strong></div>
+          <div><span>CALL TIME · PHT</span><strong>${h(callTime)}</strong>${endTime ? `<small>Until ${h(endTime)}</small>` : ""}</div>
+        </section>
+        ${e.status === "cancelled" ? '<p class="send-card-warning">CANCELLED · Please confirm reassignment.</p>' : ""}
+        ${needsDriver(e, s.data) ? '<p class="send-card-warning">Driver confirmation pending.</p>' : ""}
+        <section class="send-card-facts" aria-label="Activity arrangements">
+          ${detail("EXPECTED DONORS", String(e.expected_donors ?? "Not entered"))}
+          ${detail("RPO NUMBER", e.rpo_number || "Not entered")}
+          ${detail("VEHICLE", e.vehicle_name || "For arrangement")}
+          ${detail("DRIVER", driverLabel(e, s.data.personnel))}
+          ${e.vehicle_details ? detail("VEHICLE DETAILS", e.vehicle_details, "send-info-wide") : ""}
+          ${detail("TRANSPORT / MEETING POINT", e.transport || "To be confirmed", "send-info-wide")}
+          ${e.contact_person ? detail("CONTACT PERSON", e.contact_person, "send-info-wide") : ""}
+        </section>
+        <section class="send-card-team">
+          <h3>TEAM / COMPANIONS <span>${companions.length} assigned</span></h3>
+          ${companions.length ? `<ul>${companions.join("")}</ul>` : '<p class="send-card-empty">No personnel assigned yet.</p>'}
+        </section>
+        ${e.notes ? `<section class="send-card-notes"><h3>ADDITIONAL INSTRUCTIONS</h3><p>${h(e.notes)}</p></section>` : ""}
+        <footer class="send-card-footer">Northern Mindanao Regional Blood Center · Philippine Time (UTC+8)</footer>
+      </article>
+      <p class="send-view-tip">Choose <strong>Screenshot mode</strong> to hide these buttons, then take your phone screenshot. Tap the activity card to show controls again.</p>
+    </div>`,
+    "send-view-dialog",
+  );
+  const shell = $("sendViewShell");
+  const card = $("sendViewCard");
+  const setScreenshotMode = (on) => {
+    shell.classList.toggle("screenshot-mode", on);
+    card.style.zoom = "1";
+    if (on) {
+      // Scale down modestly if the full summary nearly fits the phone screen.
+      // Keep long notes accessible by scrolling rather than making text tiny.
+      requestAnimationFrame(() => {
+        const available = Math.max(250, window.innerHeight - 28);
+        const natural = card.getBoundingClientRect().height;
+        const scale = Math.min(1, available / Math.max(natural, 1));
+        card.style.zoom = String(Math.max(0.78, scale).toFixed(3));
+        $("mainDialog").scrollTop = 0;
+      });
+    }
+  };
+  $("sendViewBack").onclick = () => eventDetails(id, personId, date);
+  $("sendViewCapture").onclick = () => setScreenshotMode(true);
+  card.addEventListener("click", () => {
+    if (shell.classList.contains("screenshot-mode")) setScreenshotMode(false);
+  });
+  card.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && shell.classList.contains("screenshot-mode"))
+      setScreenshotMode(false);
+  });
+}
+
 function eventForm(id = null, prefillDate = null) {
   if (!s.admin) return;
   const e = eventBy(id),
