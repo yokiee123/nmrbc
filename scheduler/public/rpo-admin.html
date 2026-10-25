@@ -1,23 +1,114 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>NMRBC · RPO Notifications</title><link rel="stylesheet" href="./email-admin.css"></head>
-<body><main>
-<header><a href="./email-admin.html">← Back to email administration</a><p class="eyebrow">NMRBC · APPROVED ADMINISTRATORS ONLY</p>
-<h1>RPO Notifications</h1><p>New published events and amendments to published events. Regular AM/PM swaps do not trigger RPO email.</p></header>
-<p id="message" role="status" aria-live="polite"></p>
-<section id="loginPanel" hidden><h2>Administrator login</h2><form id="loginForm"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button>Sign in</button></form></section>
-<div id="privatePanel" hidden>
-<section><div class="section-title"><h2>RPO maker</h2><button type="button" id="refresh" class="outline">Refresh</button></div>
-<form id="settingsForm">
-<label>RPO maker's full name<input name="maker_name" maxlength="120" autocomplete="off"></label>
-<label>Notification email<input name="maker_email" type="email" maxlength="254" autocomplete="off"></label>
-<label class="check"><input name="enabled" type="checkbox">Enable notifications after publication</label>
-<button type="submit">Save RPO settings</button></form>
-<p class="muted">The scheduler currently uses <strong>Confirmed</strong> as Published and <strong>Planned</strong> as Draft. Existing confirmed events are recorded as a baseline during installation and will not generate retroactive mail. Changes to published events are tracked thereafter. Changes to an already-published event reverted to Planned will still notify the maker.</p>
-<p class="muted">Saving settings does not itself send a test. Emails require deployment and scheduling of the RPO worker. If the worker is not running, pending messages remain in the queue.</p>
-</section>
-<section><h2>Amendment and delivery history</h2>
-<p class="muted">Accepted means Gmail accepted the message, not that it reached the inbox. An uncertain result is never retried automatically to avoid duplicates. Use the latest event revision when preparing an RPO.</p>
-<div class="table-wrap"><table><thead><tr><th>Event</th><th>Change</th><th>Modified by</th><th>Email</th><th>RPO status</th><th>Details</th></tr></thead><tbody id="notifications"></tbody></table></div></section>
-<button type="button" id="logout" class="outline">Sign out</button>
-</div></main><script src="./config.js"></script><script type="module" src="./rpo-admin.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>NMRBC · RPO Control Center</title>
+  <link rel="stylesheet" href="./email-admin.css">
+  <link rel="stylesheet" href="./rpo-admin.css">
+</head>
+<body>
+<main>
+  <header class="rpo-header">
+    <div><a href="./email-admin.html">← Email administration</a>
+      <p class="eyebrow">NMRBC · APPROVED ADMINISTRATORS ONLY</p>
+      <h1>RPO Control Center</h1>
+      <p class="muted">Published events, amendments, queue delivery and email tests in one secure workspace.</p>
+    </div>
+    <div class="header-actions">
+      <span id="overallStatus" class="status neutral" aria-live="polite">Sign in required</span>
+      <button type="button" class="outline" id="refresh">↻ Refresh</button>
+      <button type="button" class="outline" id="logout" hidden>Sign out</button>
+    </div>
+  </header>
+  <p id="message" role="status" aria-live="polite"></p>
+  <section id="loginPanel" hidden>
+    <h2>Scheduler administrator login</h2>
+    <form id="loginForm" class="form-grid">
+      <label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <div><button type="submit">Sign in</button></div>
+    </form>
+  </section>
+  <div id="privatePanel" hidden>
+    <div class="metrics" aria-label="RPO notification totals">
+      <article class="metric"><span>Pending</span><strong id="mPending">0</strong><small>Not yet processed</small></article>
+      <article class="metric"><span>Accepted</span><strong id="mAccepted">0</strong><small>Accepted by Gmail</small></article>
+      <article class="metric"><span>Uncertain</span><strong id="mUncertain">0</strong><small>Manual review needed</small></article>
+      <article class="metric"><span>Skipped</span><strong id="mSkipped">0</strong><small>Retained in history</small></article>
+      <article class="metric"><span>Total</span><strong id="mTotal">0</strong><small>All recorded revisions</small></article>
+    </div>
+    <section class="control-panel">
+      <div class="section-title"><h2>Automatic sending controls</h2><span id="deliveryHealth" class="status neutral">Checking…</span></div>
+      <p class="muted">Two independent safety switches. Pausing delivery <strong>does not discard</strong> pending messages. The staff reminder cron is not affected.</p>
+      <div class="control-grid">
+        <article class="control-card">
+          <div class="section-title"><h3>Delivery gate</h3><span class="status neutral" id="deliveryStatus">Unknown</span></div>
+          <p class="muted">Prevents the worker from claiming any more queued RPO notifications.</p>
+          <button id="deliveryToggle" type="button">Change delivery state</button>
+        </article>
+        <article class="control-card">
+          <div class="section-title"><h3>RPO cron job</h3><span class="status neutral" id="cronStatus">Unknown</span></div>
+          <p class="muted" id="cronInfo">Runs the dedicated RPO function every 5 minutes.</p>
+          <button id="cronToggle" type="button" class="outline">Change cron state</button>
+        </article>
+      </div>
+      <p class="hint warning">Server master switch: <code>RPO_SEND_ENABLED</code> must also be <code>true</code> in Supabase Edge Functions → Secrets to deliver queue mail. That secret cannot be inspected or changed from this page. Set it manually once you've cleared the old queue.</p>
+    </section>
+    <div class="rpo-split">
+      <section>
+        <h2>Send a test email</h2>
+        <p class="muted">Send a single Gmail test to an address you enter. Does not consume the notification queue. Limited to one test every 60 seconds.</p>
+        <form id="testForm">
+          <label>Test recipient email<input id="testRecipient" type="email" maxlength="254" placeholder="your@email.com" autocomplete="email" required></label>
+          <div class="action-bar"><button type="submit" id="testButton">✉ Send test email</button><button type="button" id="checkTest" class="outline">Check latest test result</button></div>
+        </form>
+        <p id="testResult" class="muted" aria-live="polite">No test result checked yet.</p>
+      </section>
+      <section>
+        <h2>RPO maker settings</h2>
+        <p class="muted">These settings determine who receives new published-event notifications.</p>
+        <form id="settingsForm">
+          <label>Full name<input name="maker_name" maxlength="120" autocomplete="off"></label>
+          <label>Notification email<input name="maker_email" type="email" maxlength="254" autocomplete="off"></label>
+          <label class="check"><input name="enabled" type="checkbox"> Capture notifications for confirmed events</label>
+          <button type="submit">Save maker settings</button>
+        </form>
+        <p class="hint">Changing the maker email or disabling capture can mark existing pending items as skipped. For temporary sending pauses, use the Delivery gate instead.</p>
+      </section>
+    </div>
+    <section>
+      <div class="section-title"><h2>Queue and notification history</h2><button type="button" class="outline" id="csvExport">↓ Export visible CSV</button></div>
+      <p class="muted">Recent 200 notifications. Filters run locally on these rows. Accepted means Gmail accepted the message, not guaranteed inbox delivery. Never automatically retry an uncertain or stuck sending status.</p>
+      <div class="filterbar">
+        <label>Search events or recipients<input id="historySearch" type="search" placeholder="Event, date, actor, recipient…"></label>
+        <label>Delivery status<select id="historyStatus"><option value="">All statuses</option><option value="pending">Pending</option><option value="sending">Sending</option><option value="accepted">Accepted</option><option value="uncertain">Uncertain</option><option value="skipped">Skipped</option></select></label>
+        <label>Show<select id="historyLimit"><option value="50">50 rows</option><option value="100">100 rows</option><option value="200">200 rows</option></select></label>
+      </div>
+      <p class="muted" id="filteredCount"></p>
+      <div class="table-wrap"><table><thead><tr><th>ID / Event</th><th>Change</th><th>Modified by</th><th>Email delivery</th><th>RPO review</th><th>Details</th></tr></thead><tbody id="notifications"></tbody></table></div>
+    </section>
+    <div class="rpo-split">
+      <section class="danger-zone">
+        <h2>Historical backlog reset</h2>
+        <p class="muted">Start fresh by marking old <strong>pending</strong> items as skipped. It does not delete records or change event schedules. Already accepted or uncertain items are never changed.</p>
+        <p class="muted">Your original backlog ended at <strong>ID 92</strong>. Keep this boundary if you intend to skip only those original 92 notifications.</p>
+        <form id="skipForm">
+          <label>Skip pending notifications through ID<input id="skipThrough" type="number" min="1" step="1" value="92" required></label>
+          <label>Type <code>SKIP</code> to confirm<input id="skipConfirm" type="text" placeholder="SKIP" autocomplete="off" required></label>
+          <button type="submit" id="skipButton" class="danger">Archive old pending emails</button>
+        </form>
+        <p class="hint warning">Pause the Delivery gate first. Upcoming events included in the skipped range will not receive their original publication email.</p>
+      </section>
+      <section>
+        <h2>Admin action history</h2>
+        <p class="muted">Latest 25 delivery changes, cron toggles, tests and backlog resets. Helps with accountability and troubleshooting.</p>
+        <div class="table-wrap"><table><thead><tr><th>Time</th><th>Action</th><th>Administrator</th></tr></thead><tbody id="auditRows"></tbody></table></div>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="./config.js"></script>
+<script type="module" src="./rpo-admin.js"></script>
+</body></html>
