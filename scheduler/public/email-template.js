@@ -1,3 +1,4 @@
+const BRAND_URL = 'https://crimsoncore.online/';
 const escape = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const duties = {'AM/T':'AM Testing','AM/C':'AM Component processing','AM/L':'AM Labelling','AM/D':'AM Distribution','PM/T':'PM Testing','PM/C':'PM Component processing',AM:'AM duty',PM:'PM duty',MBD:'Mobile blood donation',OFF:'Day off',LEAVE:'Leave',OFFICE:'Office duty',TRAINING:'Training',CANCELLED:'Cancelled event — Needs reassignment'};
 const clock=value=>value?`${String(value).slice(0,5)} Philippine time`:'';
@@ -32,7 +33,7 @@ export function mailBody(job,config){
  let link='';
  if(config.url){const u=new URL(config.url);if(u.protocol!=='https:')throw Error('Scheduler URL must use HTTPS');link=u.href;}
  blocks.push('To stop reminders or correct your email, contact your schedule administrator.');
- const text=[...blocks,...(link?[`View scheduler: ${link}`]:[])].join('\n\n');
- const html=`<div style="font:16px/1.6 Arial,sans-serif;max-width:680px;margin:auto;color:#203139"><h2 style="color:#a12535">NMRBC Schedule${job.kind==='test'?' — Test':''}</h2>${blocks.map(s=>`<p>${escape(s).replace(/\n/g,'<br>')}</p>`).join('')}${link?`<p><a href="${escape(link)}">View latest schedule</a></p>`:''}</div>`;
+ const text=[...blocks,...(link?[`View scheduler: ${link}`]:[]),`Powered by CrimsonCore: ${BRAND_URL}`].join('\n\n');
+ const html=`<div style="font:16px/1.6 Arial,sans-serif;max-width:680px;margin:auto;color:#203139"><h2 style="color:#a12535">NMRBC Schedule${job.kind==='test'?' — Test':''}</h2>${blocks.map(s=>`<p>${escape(s).replace(/\n/g,'<br>')}</p>`).join('')}${link?`<p><a href="${escape(link)}">View latest schedule</a></p>`:''}<div style="border-top:1px solid #e5e7eb;padding-top:14px;margin-top:24px;font:12px/1.6 Arial,sans-serif;color:#64748b">Powered by <a href="${BRAND_URL}" style="color:#a12535;font-weight:700;text-decoration:underline">CrimsonCore</a></div></div>`;
  return {from:config.from,to:[job.recipient],subject,text,html};
 }
