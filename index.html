@@ -46,6 +46,96 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
 
+
+    /* CrimsonCore credit in the top-right corner */
+    .powered-by {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.09);
+      color: #ffffff;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .powered-by .powered-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: #edd9d9;
+    }
+
+    .powered-by strong {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.025em;
+    }
+
+    .powered-by:hover {
+      background: rgba(255, 255, 255, 0.17);
+      border-color: rgba(255, 255, 255, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .powered-by:focus-visible,
+    .system-card:focus-visible,
+    .report-action:focus-visible {
+      outline: 3px solid #ffe49c;
+      outline-offset: 3px;
+    }
+
+    /* Lightweight inline SVG icons, consistent on every device */
+    .ui-icon {
+      width: 34px;
+      height: 34px;
+      display: block;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon {
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff4f4;
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 13px;
+    }
+
+    .powered-by .ui-icon {
+      width: 14px;
+      height: 14px;
+      color: #f5d6d6;
+    }
+
+    .report-header-icon .ui-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .report-print-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .report-print-btn .ui-icon {
+      width: 16px;
+      height: 16px;
+    }
+
     /* ==============================
        TITLE
     ============================== */
@@ -152,7 +242,6 @@
     }
 
     .system-card .icon {
-      font-size: 34px;
       margin-bottom: 14px;
     }
 
@@ -226,8 +315,14 @@
     }
 
     .remote-download .icon {
-      font-size: 26px;
+      width: 44px;
+      height: 44px;
       margin-bottom: 8px;
+    }
+
+    .remote-download .icon .ui-icon {
+      width: 26px;
+      height: 26px;
     }
 
     .remote-download h3 {
@@ -346,8 +441,6 @@
       justify-content: center;
 
       background: rgba(255, 255, 255, 0.15);
-
-      font-size: 20px;
     }
 
     .report-header-title {
@@ -491,7 +584,19 @@
       }
 
       .top-bar {
-        justify-content: center;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px 16px;
+      }
+
+      .powered-by {
+        margin-left: auto;
+      }
+
+      .datetime {
+        max-width: 100%;
       }
 
       .datetime {
@@ -538,6 +643,63 @@
 
 <body>
 
+  <!-- Local outline-icon sprite: no external icon library or network required. -->
+  <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false"
+       style="position:absolute;overflow:hidden;pointer-events:none">
+    <defs>
+      <symbol id="dash-icon-folder" viewBox="0 0 24 24">
+        <path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/>
+      </symbol>
+      <symbol id="dash-icon-archive" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="4" rx="1"/>
+        <path d="M5 8v12h14V8M10 12h4"/>
+      </symbol>
+      <symbol id="dash-icon-book" viewBox="0 0 24 24">
+        <path d="M12 7v14M3 18V5a2 2 0 0 1 2-2h3a4 4 0 0 1 4 4 4 4 0 0 1 4-4h3a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1h-4a4 4 0 0 0-4 2 4 4 0 0 0-4-2H4a1 1 0 0 1-1-1Z"/>
+      </symbol>
+      <symbol id="dash-icon-droplet" viewBox="0 0 24 24">
+        <path d="M12 22a8 8 0 0 0 8-8c0-5-8-12-8-12S4 9 4 14a8 8 0 0 0 8 8Z"/>
+        <path d="M8.5 15.5a3.6 3.6 0 0 0 3.5 3"/>
+      </symbol>
+      <symbol id="dash-icon-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/>
+      </symbol>
+      <symbol id="dash-icon-calendar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2"/>
+        <path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+      </symbol>
+      <symbol id="dash-icon-calendar-check" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2"/>
+        <path d="M16 3v4M8 3v4M3 10h18m5 7 2 2 4-4"/>
+      </symbol>
+      <symbol id="dash-icon-report" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
+        <path d="M14 2v6h6M8 17v-3M12 17V11M16 17v-5"/>
+      </symbol>
+      <symbol id="dash-icon-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3"/>
+        <path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5.2a3 3 0 0 1 0 5.6M18 14a5 5 0 0 1 3 4.6V20"/>
+      </symbol>
+      <symbol id="dash-icon-heart" viewBox="0 0 24 24">
+        <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>
+        <path d="M6.7 12h3l1.4-2.5 2.1 5 1.4-2.5h2.7"/>
+      </symbol>
+      <symbol id="dash-icon-monitor" viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="15" rx="2"/>
+        <path d="M8 22h8M12 18v4"/>
+      </symbol>
+      <symbol id="dash-icon-printer" viewBox="0 0 24 24">
+        <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8" rx="1"/>
+        <path d="M18 12h.01"/>
+      </symbol>
+      <symbol id="dash-icon-external" viewBox="0 0 24 24">
+        <path d="M13 5h6v6M19 5l-9 9M19 13v6H5V5h6"/>
+      </symbol>
+    </defs>
+  </svg>
+
   <!-- =====================================================
        TOP BAR
   ===================================================== -->
@@ -547,6 +709,17 @@
     <div class="datetime" id="datetime">
       Loading date and time...
     </div>
+
+    <a class="powered-by"
+       href="https://crimsoncore.online"
+       target="_blank"
+       rel="noopener noreferrer"
+       aria-label="Powered by CrimsonCore (opens official website in a new tab)"
+       title="Visit CrimsonCore">
+      <span class="powered-label">Powered by</span>
+      <strong>CrimsonCore</strong>
+      <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-external"></use></svg>
+    </a>
 
   </div>
 
@@ -598,7 +771,7 @@
         >
 
           <div class="icon">
-            📂
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-folder"></use></svg>
           </div>
 
           <h3>
@@ -622,7 +795,7 @@
         >
 
           <div class="icon">
-            🗄️
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-archive"></use></svg>
           </div>
 
           <h3>
@@ -646,7 +819,7 @@
         >
 
           <div class="icon">
-            📚
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-book"></use></svg>
           </div>
 
           <h3>
@@ -692,7 +865,7 @@
         >
 
           <div class="icon">
-            🩸
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-droplet"></use></svg>
           </div>
 
           <h3>
@@ -713,7 +886,9 @@
            href="https://ca97-202-137-117-211.ngrok-free.app/v4/"
            target="_blank" rel="noopener noreferrer"
            style="background:linear-gradient(145deg,#17476b,#12314d);">
-          <div class="icon">🌐</div>
+          <div class="icon">
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-globe"></use></svg>
+          </div>
           <h3>NMRBC System V4 Server 2</h3>
           <span>Online Access via ngrok</span>
         </a>
@@ -730,7 +905,7 @@
         >
 
           <div class="icon">
-            📅
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-calendar"></use></svg>
           </div>
 
           <h3>
@@ -754,7 +929,7 @@
         >
 
           <div class="icon">
-            📅
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-calendar-check"></use></svg>
           </div>
 
           <h3>
@@ -782,7 +957,7 @@
           </div>
 
           <div class="icon">
-            🩸
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-report"></use></svg>
           </div>
 
           <h3>
@@ -808,7 +983,7 @@
         >
 
           <div class="icon">
-            👥
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-users"></use></svg>
           </div>
 
           <h3>
@@ -834,7 +1009,7 @@
         >
 
           <div class="icon">
-            ❤️
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-heart"></use></svg>
           </div>
 
           <h3>
@@ -861,7 +1036,7 @@
         >
 
           <div class="icon">
-            🖥️
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-monitor"></use></svg>
           </div>
 
           <h3>
@@ -938,7 +1113,7 @@
         <div class="report-header-left">
 
           <div class="report-header-icon">
-            🩸
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-report"></use></svg>
           </div>
 
           <div class="report-header-title">
@@ -970,7 +1145,7 @@
             class="report-action report-print-btn"
             onclick="printNVBSPReport()"
           >
-            🖨️ Print Report
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#dash-icon-printer"></use></svg> Print Report
           </button>
 
 
