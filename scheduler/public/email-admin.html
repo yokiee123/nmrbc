@@ -1,14 +1,247 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>NMRBC — Email reminders</title><link rel="stylesheet" href="./email-admin.css"></head>
-<body><main><header><a href="./index.html">← Back to scheduler</a><p class="eyebrow">NMRBC · ADMINISTRATION</p><h1>Email reminders</h1><p>Send tomorrow’s assignment and keep staff informed when their schedule changes.</p></header>
-<p id="message" role="status" aria-live="polite"></p>
-<section id="loginPanel" hidden><h2>Administrator login</h2><form id="loginForm"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button>Sign in</button></form></section>
-<div id="privatePanel" hidden>
-<section><div class="section-title"><h2>Sending preferences</h2><button id="refresh" type="button" class="outline">Refresh</button></div>
-<form id="settingsForm"><label class="check"><input name="enabled" type="checkbox">Enable automatic staff reminders</label><label>Daily reminder time (Philippine time)<input name="time" type="time" required step="60" value="18:00"></label><label class="check"><input name="changes" type="checkbox">Send updates after a reminder when the schedule changes</label><label class="check"><input name="off" type="checkbox">Include day-off and leave reminders</label><button>Save preferences</button></form><p id="workerStatus" class="muted"></p>
-<p class="muted">Reminders need a working Gmail authorization and a background job. Changes are checked every five minutes. Unassigned dates do not receive an initial reminder.</p>
-<button id="testButton" type="button" class="outline">Send a test to my admin email</button><p class="muted">The test goes only to your signed-in account, even while staff reminders are disabled.</p></section>
-<section><h2>Staff email addresses</h2><p class="muted">Visible only to approved administrators. Verify the address before enabling reminders. Clear an address and save to remove it.</p><label>Find staff<input id="search" type="search" placeholder="Search name"></label><div id="contacts"></div></section>
-<section><h2>Recent sending activity</h2><p class="muted">“Accepted” means the Gmail API accepted the message; it does not confirm arrival in the inbox. Check Gmail Sent and any bounce messages for delivery details.</p><div class="table-wrap"><table><thead><tr><th>Staff</th><th>Schedule date</th><th>Type</th><th>Status</th><th>Attempts</th><th>Details</th></tr></thead><tbody id="log"></tbody></table></div><p class="muted">If a message is marked uncertain, check Gmail Sent before any manual resend. Automatic retries stop when the sending outcome is unclear.</p></section>
-<button id="logout" type="button" class="outline">Sign out</button></div>
-<dialog id="previewDialog"><h2>Tomorrow’s email preview</h2><div id="preview"></div><button id="closePreview">Close</button></dialog>
-</main><script src="./config.js"></script><script type="module" src="./email-admin.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>NMRBC — Email reminders</title>
+  <link rel="stylesheet" href="./email-admin.css">
+  <style>
+    /* Page-only enhancements. The existing email-admin.css remains unchanged. */
+    .admin-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 24px 0 12px;
+      padding: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .admin-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .admin-tabs [role="tab"] {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      padding: 10px 15px;
+      margin: 0;
+      border-radius: 9px;
+      font-size: .94rem;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .admin-tabs [role="tab"]:hover { background: var(--panel); border-color: var(--border); }
+    .admin-tabs [role="tab"][aria-selected="true"] {
+      background: var(--accent);
+      color: var(--panel);
+      border-color: var(--accent);
+    }
+    .admin-toolbar-actions { display: flex; gap: 6px; align-items: center; }
+    .admin-toolbar-actions button { margin: 0; font-size: .92rem; }
+    .admin-pane { margin: 12px 0 20px; }
+    .admin-pane[hidden] { display: none !important; }
+    .admin-pane > h2 { margin-bottom: 8px; }
+    .activity-tools {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+      margin: 14px 0;
+    }
+    .activity-tools label { flex: 1 1 220px; margin: 0; }
+    .activity-tools input, .activity-tools select {
+      display: block;
+      width: 100%;
+      max-width: none;
+      font: inherit;
+      color: inherit;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px;
+      margin-top: 5px;
+    }
+    .activity-count { margin: 0 0 9px; }
+    .activity-list {
+      max-height: min(65vh, 620px);
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+    .activity-list thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--panel);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .activity-list tr[hidden] { display: none !important; }
+    .activity-list tbody tr:hover { background: var(--bg); }
+    @media (max-width: 720px) {
+      .admin-toolbar { top: 0; padding: 8px; }
+      .admin-tabs { width: 100%; flex-wrap: nowrap; overflow-x: auto; }
+      .admin-tabs [role="tab"] { font-size: .85rem; padding: 9px 11px; }
+      .admin-toolbar-actions { width: 100%; justify-content: flex-end; }
+      .admin-toolbar-actions button { padding: 7px 11px; }
+      .activity-list { max-height: 58vh; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <a href="./index.html">← Back to scheduler</a>
+    <p class="eyebrow">NMRBC · ADMINISTRATION</p>
+    <h1>Email reminders</h1>
+    <p>Send tomorrow’s assignment and keep staff informed when their schedule changes.</p>
+  </header>
+  <p id="message" role="status" aria-live="polite"></p>
+
+  <section id="loginPanel" hidden>
+    <h2>Administrator login</h2>
+    <form id="loginForm">
+      <label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <button>Sign in</button>
+    </form>
+  </section>
+
+  <div id="privatePanel" hidden>
+    <div class="admin-toolbar">
+      <nav class="admin-tabs" role="tablist" aria-label="Email administration sections">
+        <button type="button" role="tab" id="tab-activity" data-admin-tab="activity" aria-controls="panel-activity" aria-selected="true" tabindex="0">Recent Activity</button>
+        <button type="button" role="tab" id="tab-contacts" data-admin-tab="contacts" aria-controls="panel-contacts" aria-selected="false" tabindex="-1">Staff Emails</button>
+        <button type="button" role="tab" id="tab-preferences" data-admin-tab="preferences" aria-controls="panel-preferences" aria-selected="false" tabindex="-1">Sending Preferences</button>
+      </nav>
+      <div class="admin-toolbar-actions">
+        <button id="refresh" type="button" class="outline">Refresh data</button>
+        <button id="logout" type="button" class="outline">Sign out</button>
+      </div>
+    </div>
+
+    <section class="admin-pane" id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" data-admin-panel="activity" tabindex="0">
+      <h2>Recent sending activity</h2>
+      <p class="muted">“Accepted” means the Gmail API accepted the message; it does not confirm arrival in the inbox. Check Gmail Sent and any bounce messages for delivery details.</p>
+      <div class="activity-tools">
+        <label>Search messages<input id="activitySearch" type="search" placeholder="Staff, date, type, or details" autocomplete="off"></label>
+        <label>Status<select id="activityStatus"><option value="">All statuses</option></select></label>
+      </div>
+      <p id="activityCount" class="muted activity-count" aria-live="polite"></p>
+      <div class="table-wrap activity-list">
+        <table>
+          <thead><tr><th>Staff</th><th>Schedule date</th><th>Type</th><th>Status</th><th>Attempts</th><th>Details</th></tr></thead>
+          <tbody id="log"></tbody>
+        </table>
+      </div>
+      <p class="muted">If a message is marked uncertain, check Gmail Sent before any manual resend. Automatic retries stop when the sending outcome is unclear.</p>
+    </section>
+
+    <section class="admin-pane" id="panel-contacts" role="tabpanel" aria-labelledby="tab-contacts" data-admin-panel="contacts" tabindex="0" hidden>
+      <h2>Staff email addresses</h2>
+      <p class="muted">Visible only to approved administrators. Verify the address before enabling reminders. Clear an address and save to remove it.</p>
+      <label>Find staff<input id="search" type="search" placeholder="Search name"></label>
+      <div id="contacts"></div>
+    </section>
+
+    <section class="admin-pane" id="panel-preferences" role="tabpanel" aria-labelledby="tab-preferences" data-admin-panel="preferences" tabindex="0" hidden>
+      <h2>Sending preferences</h2>
+      <form id="settingsForm">
+        <label class="check"><input name="enabled" type="checkbox">Enable automatic staff reminders</label>
+        <label>Daily reminder time (Philippine time)<input name="time" type="time" required step="60" value="18:00"></label>
+        <label class="check"><input name="changes" type="checkbox">Send updates after a reminder when the schedule changes</label>
+        <label class="check"><input name="off" type="checkbox">Include day-off and leave reminders</label>
+        <button>Save preferences</button>
+      </form>
+      <p id="workerStatus" class="muted"></p>
+      <p class="muted">Reminders need a working Gmail authorization and a background job. Changes are checked every five minutes. Unassigned dates do not receive an initial reminder.</p>
+      <button id="testButton" type="button" class="outline">Send a test to my admin email</button>
+      <p class="muted">The test goes only to your signed-in account, even while staff reminders are disabled.</p>
+    </section>
+  </div>
+
+  <dialog id="previewDialog">
+    <h2>Tomorrow’s email preview</h2>
+    <div id="preview"></div>
+    <button id="closePreview">Close</button>
+  </dialog>
+</main>
+<script src="./config.js"></script>
+<script type="module" src="./email-admin.js"></script>
+<script>
+  (() => {
+    'use strict';
+    const storageKey = 'nmrbc-email-admin-selected-tab';
+    const tabNames = ['activity', 'contacts', 'preferences'];
+    const tabs = [...document.querySelectorAll('[data-admin-tab]')];
+    const panels = [...document.querySelectorAll('[data-admin-panel]')];
+
+    function selectTab(name, focus = false) {
+      if (!tabNames.includes(name)) name = 'activity';
+      tabs.forEach(tab => {
+        const active = tab.dataset.adminTab === name;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        if (active && focus) tab.focus();
+      });
+      panels.forEach(panel => { panel.hidden = panel.dataset.adminPanel !== name; });
+      try { localStorage.setItem(storageKey, name); } catch (_) { /* Browsers may disable storage. */ }
+    }
+    let remembered = 'activity';
+    try { remembered = localStorage.getItem(storageKey) || remembered; } catch (_) { /* Use default. */ }
+    selectTab(remembered);
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectTab(tab.dataset.adminTab));
+      tab.addEventListener('keydown', event => {
+        let target;
+        if (event.key === 'ArrowRight') target = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') target = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === 'Home') target = 0;
+        else if (event.key === 'End') target = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        selectTab(tabs[target].dataset.adminTab, true);
+      });
+    });
+
+    // The existing email-admin.js updates #log after loading the Supabase snapshot.
+    // Observe only row replacement, never alter sending or authentication workflows.
+    const log = document.getElementById('log');
+    const search = document.getElementById('activitySearch');
+    const status = document.getElementById('activityStatus');
+    const count = document.getElementById('activityCount');
+    const messageRows = () => [...log.querySelectorAll('tr')].filter(row => !row.querySelector('td[colspan]'));
+    function applyActivityFilter() {
+      const query = search.value.trim().toLocaleLowerCase();
+      const selectedStatus = status.value;
+      const rows = messageRows();
+      let visible = 0;
+      rows.forEach(row => {
+        const rowStatus = row.querySelector('.badge')?.textContent.trim() || '';
+        const matches = (!query || row.textContent.toLocaleLowerCase().includes(query)) &&
+                        (!selectedStatus || rowStatus === selectedStatus);
+        row.hidden = !matches;
+        if (matches) visible++;
+      });
+      count.textContent = rows.length ? `Showing ${visible} of ${rows.length} recent messages` : 'No messages queued yet.';
+    }
+    function syncStatuses() {
+      const previousStatus = status.value;
+      const names = [...new Set(messageRows().map(row => row.querySelector('.badge')?.textContent.trim()).filter(Boolean))].sort();
+      status.replaceChildren(new Option('All statuses', ''), ...names.map(name => new Option(name, name)));
+      status.value = names.includes(previousStatus) ? previousStatus : '';
+      applyActivityFilter();
+    }
+    search.addEventListener('input', applyActivityFilter);
+    status.addEventListener('change', applyActivityFilter);
+    new MutationObserver(syncStatuses).observe(log, {childList: true});
+    syncStatuses();
+  })();
+</script>
+</body>
+</html>
