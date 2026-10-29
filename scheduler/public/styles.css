@@ -860,8 +860,23 @@ h3 {
   padding: 26px 0;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   font-size: 10px;
   color: #8b969d;
+}
+.site-footer .powered-by {
+  white-space: nowrap;
+}
+.site-footer .powered-by a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.site-footer .powered-by a:hover,
+.site-footer .powered-by a:focus-visible {
+  text-decoration: underline;
 }
 .visually-hidden {
   position: absolute;

@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { mailBody } from "../public/email-template.js";
 import {
   period,
   datesBetween,
@@ -53,4 +55,35 @@ test("Calendar export uses Philippine time and escapes descriptions", () => {
   assert.match(value, /DTSTART;TZID=Asia\/Manila:20261008T073000/);
   assert.ok(value.includes("SUMMARY:Drive\\, one"));
   assert.ok(value.includes("Bring kit\\nMeet early"));
+});
+
+test("Scheduler footer links to CrimsonCore in a separate tab", () => {
+  const markup = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(markup, /class="powered-by"/);
+  assert.match(markup, /href="https:\/\/crimsoncore\.online\/"/);
+  assert.match(markup, /rel="noopener noreferrer"/);
+});
+
+test("Reminder email preview includes CrimsonCore branding without losing schedule details", () => {
+  const message = mailBody(
+    {
+      kind: "daily",
+      recipient: "recipient@example.test",
+      payload: {
+        name: "Sample Staff",
+        date: "2026-11-03",
+        code: "MBD",
+        driver: "Sample Driver",
+        event: { title: "Sample Drive", location: "Sample Venue", rpo_number: "RPO-001", vehicle_name: "Van" },
+      },
+    },
+    { from: "NMRBC <sender@example.test>", url: "https://scheduler.example.test/" },
+  );
+  assert.match(message.text, /Powered by CrimsonCore: https:\/\/crimsoncore\.online\//);
+  assert.match(message.html, /Powered by <a href="https:\/\/crimsoncore\.online\//);
+  assert.match(message.html, /View latest schedule/);
+  assert.match(message.text, /Driver: Sample Driver/);
+  assert.match(message.text, /RPO: RPO-001/);
+  assert.match(message.text, /Vehicle: Van/);
+  assert.equal(message.to[0], "recipient@example.test");
 });
