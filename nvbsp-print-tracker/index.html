@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>NVBSP Barcode Print Tracker</title>
+  <link rel="stylesheet" href="./tracker.css">
+  <script src="../scheduler/public/config.js" defer></script>
+  <script type="module" src="./tracker.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap header-row">
+      <div>
+        <p class="organization">Northern Mindanao Regional Blood Center</p>
+        <h1>NVBSP Barcode Print Tracker</h1>
+      </div>
+      <a href="../nvbsp_donation_series_report.html">September 2026 QA report</a>
+    </div>
+  </header>
+  <main class="wrap">
+    <p id="status" role="status" aria-live="polite">Connecting to Supabase…</p>
+
+    <section class="panel login" id="login-panel" hidden>
+      <h2>Staff sign-in</h2>
+      <p>Use your NMRBC Scheduler administrator account.</p>
+      <form id="login-form">
+        <label>Email <input name="email" type="email" autocomplete="username" required></label>
+        <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <button id="sign-out" class="secondary standalone" type="button" hidden>Sign out</button>
+
+    <div id="tracker" hidden>
+      <div class="toolbar">
+        <label for="allocation">Allocated barcode series
+          <select id="allocation"></select>
+        </label>
+        <button id="refresh" class="secondary" type="button">Refresh</button>
+      </div>
+
+      <div class="metrics" aria-label="Selected allocation totals">
+        <article class="panel next-card">
+          <h2>Next barcode to print</h2>
+          <output id="next" class="barcode">—</output>
+          <p id="next-note"></p>
+          <button id="copy-next" class="secondary" type="button" disabled>Copy barcode</button>
+        </article>
+        <article class="panel">
+          <h2>Highest printed barcode</h2>
+          <output id="highest" class="barcode">—</output>
+        </article>
+        <article class="panel">
+          <h2>Recorded as printed</h2>
+          <output id="printed" class="count">—</output>
+          <p><span id="remaining">—</span> remaining</p>
+        </article>
+      </div>
+
+      <section class="panel form-panel">
+        <h2>Record printed barcodes</h2>
+        <p>Scan or enter the first printed ID. For a continuous batch, enter the last printed ID too.</p>
+        <p>Before using the next ID, make sure prints after the September 28, 2026 QA report are recorded.</p>
+        <form id="record-form">
+          <fieldset id="record-fields" disabled>
+            <div class="fields">
+              <label>First barcode ID
+                <input name="first" type="text" required autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="24" placeholder="Scan or type an ID">
+              </label>
+              <label>Last barcode ID (optional)
+                <input name="last" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="24" placeholder="Leave blank for one barcode">
+              </label>
+              <label>Print date <input name="printedOn" type="date" required></label>
+            </div>
+            <label>Remarks (optional)
+              <input name="remarks" type="text" maxlength="300" placeholder="For example, printer or batch reference">
+            </label>
+            <button type="submit">Record as printed</button>
+          </fieldset>
+        </form>
+      </section>
+
+      <section class="panel history-panel" aria-labelledby="history-title">
+        <h2 id="history-title">Print history</h2>
+        <p>Ranges are shown from highest to lowest barcode.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Print history table">
+          <table>
+            <thead>
+              <tr><th scope="col">First barcode</th><th scope="col">Last barcode</th><th scope="col">Qty</th><th scope="col">Print date</th><th scope="col">Remarks</th></tr>
+            </thead>
+            <tbody id="history"></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <button id="previous" class="secondary" type="button" disabled>Previous</button>
+          <button id="more" class="secondary" type="button" disabled>More records</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
