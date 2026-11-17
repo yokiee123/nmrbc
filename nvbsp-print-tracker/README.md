@@ -14,6 +14,7 @@ For an existing tracker with printer and recipient fields, run only `scheduler/s
 
 - For one printed barcode, scan or type it in **First barcode ID** and leave the last ID blank. For a continuous print run, enter both endpoints. A scanner's Enter suffix advances focus without saving.
 - Enter the actual print date and the name of the person who printed the labels. If someone already received them, enter that person's name too, then select **Record as printed**. Both endpoints are included. If a print run skipped IDs, enter each continuous span separately.
+- If the deployed form has no **Printed by** field, run `scheduler/supabase/nvbsp-legacy-print-form.sql` after the tracker schema. On that form, enter `Printed by: Full Name` in **Remarks**. The tracker saves that name in **Printed by**.
 - If the handover takes place later, select **Record recipient** on that row in **Print history**. A saved recipient can only be corrected by the project owner.
 - The next ID is the first unrecorded ID in the selected allocation. The highest printed ID may be greater if the records have a gap. Supabase rejects overlapping entries, including duplicates submitted by another workstation.
 - Refresh before printing if others have used the printer. The displayed next ID is based on the saved ledger. Coordinate the print run with other staff using the same allocation, then record the successful print.

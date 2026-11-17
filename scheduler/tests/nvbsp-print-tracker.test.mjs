@@ -28,6 +28,10 @@ test("NVBSP print records are private, reject overlap and preserve the first gap
     await db.exec(inventoryMigration);
     await db.exec(inventoryMigration);
 
+    const legacyMigration = await sqlFile("nvbsp-legacy-print-form.sql");
+    await db.exec(legacyMigration);
+    await db.exec(legacyMigration);
+
     const allocation = [20269249951, 20269252950];
     const newPool = [20269252951, 20269252960];
     const addSeries = (first, last) => db.query(
@@ -42,6 +46,10 @@ test("NVBSP print records are private, reject overlap and preserve the first gap
         (first_serial, last_serial, allocation_first, allocation_last, printed_on, printed_by, received_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [first, last, ...pool, date, printer, recipient]);
+    const legacyRecord = (first, last, remarks, date = "2026-11-17", pool = allocation) => db.query(`
+      INSERT INTO nvbsp_print_records (first_serial, last_serial, allocation_first, allocation_last, printed_on, remarks)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [first, last, ...pool, date, remarks]);
     const receive = (first, recipient) => db.query(
       "UPDATE nvbsp_print_records SET received_by = $2 WHERE first_serial = $1 AND received_by IS NULL RETURNING received_by",
       [first, recipient],
@@ -55,6 +63,7 @@ test("NVBSP print records are private, reject overlap and preserve the first gap
     assert.equal(await snapshot(), null);
     await assert.rejects(addSeries(...newPool), { code: "42501" });
     await assert.rejects(record(20269251911, 20269251911), { code: "42501" });
+    await assert.rejects(legacyRecord(20269251911, 20269251911, "Printed by: Operator"), { code: "42501" });
 
     await role("authenticated", admin);
     const baseline = await snapshot();
@@ -67,7 +76,10 @@ test("NVBSP print records are private, reject overlap and preserve the first gap
     assert.equal(baseline.records[0].received_by, null);
 
     await assert.rejects(record(20269251911, 20269251911, "9999-01-01"), { code: "42501" });
-    await assert.rejects(record(20269251911, 20269251911, "2026-09-28", allocation, null), { code: "42501" });
+    await assert.rejects(record(20269251911, 20269251911, "2026-09-28", allocation, null), { code: "22023" });
+    await assert.rejects(legacyRecord(20269251911, 20269251911, "Batch remarks only"), { code: "22023" });
+    await assert.rejects(legacyRecord(20269251911, 20269251911, "Printed by: " + "x".repeat(121)), { code: "22023" });
+    await assert.rejects(legacyRecord(20269251911, 20269251911, "Printed by: Operator", "9999-01-01"), { code: "42501" });
     await assert.rejects(record(20269251911, 20269251911, "2026-09-28", allocation, " "), { code: "23514" });
     await record(20269251913, 20269251915);
     await assert.rejects(record(20269251912, 20269251914), { code: "23P01" });
@@ -111,7 +123,11 @@ test("NVBSP print records are private, reject overlap and preserve the first gap
     assert.deepEqual(await snapshot(newPool[0]), {
       highest: null, next: newPool[0], printed: 0, remaining: 10, records: [],
     });
-    await record(newPool[1], newPool[1], "2026-09-28", newPool);
+    await legacyRecord(newPool[1], newPool[1], " Printed by:  Print Operator ", "2026-09-28", newPool);
+    const legacy = (await snapshot(newPool[0])).records[0];
+    assert.equal(legacy.printed_by, "Print Operator");
+    assert.equal(legacy.received_by, null);
+    assert.equal((await db.query("SELECT recorded_by FROM nvbsp_print_records WHERE first_serial = $1", [newPool[1]])).rows[0].recorded_by, admin);
     assert.equal((await snapshot(newPool[0])).next, newPool[0]);
     assert.equal((await snapshot(newPool[0])).remaining, 9);
     assert.equal((await snapshot()).remaining, 0);
