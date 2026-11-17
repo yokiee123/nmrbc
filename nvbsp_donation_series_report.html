@@ -6,6 +6,8 @@
     <title>NVBSP Donation Series Printing Report - QA Copy</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="scheduler/public/config.js" defer></script>
+    <script type="module" src="nvbsp-print-tracker/qa-report.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -53,6 +55,10 @@
             overflow: hidden;
         }
 
+        [hidden] { display: none !important; }
+        .a4-container.live-report { height: auto; min-height: 296mm; }
+        .live-report td { overflow-wrap: anywhere; }
+
         @media print {
             body {
                 background: #ffffff !important;
@@ -72,6 +78,21 @@
                 page-break-inside: avoid !important;
             }
 
+            .a4-container.live-report {
+                page: live-qa;
+                display: block;
+                height: auto !important;
+                min-height: 0;
+                padding: 0 !important;
+                overflow: visible;
+                page-break-inside: auto !important;
+            }
+
+            .live-report table { overflow: visible; }
+            .live-report tr, .live-report footer { break-inside: avoid; }
+
+            @page live-qa { size: A4 portrait; margin: 10mm 12mm; }
+
             @page {
                 size: A4 portrait;
                 margin: 0;
@@ -83,7 +104,7 @@
 <body class="py-8 px-4">
 
     <!-- Floating Print Control Bar -->
-    <div class="no-print max-w-[210mm] mx-auto mb-4 flex justify-between items-center bg-slate-900 text-white p-4 rounded-xl shadow-xl border border-slate-800">
+    <div class="no-print max-w-[210mm] mx-auto mb-4 flex flex-wrap gap-3 justify-between items-center bg-slate-900 text-white p-4 rounded-xl shadow-xl border border-slate-800">
 
         <div class="flex items-center space-x-3">
 
@@ -91,11 +112,11 @@
 
             <div>
                 <span class="text-sm font-bold tracking-wide block">
-                    NVBSP Donation Series (QA Summary Copy)
+                    NVBSP Donation Series (QA Report)
                 </span>
 
-                <span class="text-xs text-slate-400">
-                    Optimized for Single-Page A4 Paper Distribution
+                <span id="qa-status" role="status" class="text-xs text-slate-300">
+                    September 28 archive. Sign in through the tracker for current totals.
                 </span>
             </div>
 
@@ -108,7 +129,15 @@
             class="text-sm font-semibold text-white underline underline-offset-4"
         >Open Barcode Print Tracker</a>
 
-        <button
+        <div id="qa-live-controls" class="flex flex-wrap items-end gap-2" hidden>
+            <label class="grid gap-1 text-xs">
+                Barcode series
+                <select id="qa-allocation" class="rounded bg-white p-2 text-slate-900"></select>
+            </label>
+            <button id="qa-refresh" type="button" class="rounded border border-slate-500 px-3 py-2 text-sm">Refresh report</button>
+        </div>
+
+        <button id="qa-print" type="button"
             onclick="window.print()"
             class="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-6 py-2.5 rounded-lg transition duration-150 shadow-md"
         >
@@ -127,7 +156,7 @@
 
 
     <!-- A4 PRINT CONTAINER -->
-    <div class="a4-container">
+    <div id="qa-report" class="a4-container">
 
         <div>
 
@@ -153,7 +182,7 @@
                     <div class="flex items-center space-x-2 mt-1">
 
                         <span class="bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">
-                            QA Distribution Copy
+                            <span data-qa="copy-label">QA Archive Copy</span>
                         </span>
 
                         <span class="text-xs text-slate-500 font-medium">
@@ -170,11 +199,11 @@
                     <div class="bg-slate-100 px-3.5 py-2 rounded-lg border border-slate-200 inline-block">
 
                         <span class="text-slate-400 uppercase font-semibold text-[9px] block tracking-wider">
-                            Print Date
+                            <span data-qa="date-label">Print Date</span>
                         </span>
 
                         <span class="font-bold text-slate-800 text-xs">
-                            September 28, 2026
+                            <span data-qa="date">September 28, 2026</span>
                         </span>
 
                     </div>
@@ -195,14 +224,14 @@
                     </span>
 
                     <div class="text-lg font-black text-slate-900 mt-0.5">
-                        3,000
+                        <span data-qa="allocated">3,000</span>
                         <span class="text-xs font-normal text-slate-500">
                             Pcs
                         </span>
                     </div>
 
                     <div class="serial-code text-[9px] font-medium text-slate-500 mt-0.5 truncate">
-                        20269249951 - 20269252950
+                        <span data-qa="allocation-range">20269249951 - 20269252950</span>
                     </div>
 
                 </div>
@@ -212,18 +241,18 @@
                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
 
                     <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Previously Printed
+                        <span data-qa="printed-title">Previously Printed</span>
                     </span>
 
                     <div class="text-lg font-black text-slate-800 mt-0.5">
-                        1,560
+                        <span data-qa="printed">1,560</span>
                         <span class="text-xs font-normal text-slate-500">
                             Pcs
                         </span>
                     </div>
 
                     <div class="serial-code text-[9px] font-medium text-slate-500 mt-0.5 truncate">
-                        20269249951 - 20269251510
+                        <span data-qa="printed-detail">20269249951 - 20269251510</span>
                     </div>
 
                 </div>
@@ -233,22 +262,22 @@
                 <div class="bg-red-50 border-2 border-red-600 rounded-xl p-3 shadow-sm relative overflow-hidden">
 
                     <div class="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-bl">
-                        Active
+                        <span data-qa="highest-badge">Active</span>
                     </div>
 
                     <span class="text-[9px] font-extrabold text-red-700 uppercase tracking-wider block">
-                        Currently Printed
+                        <span data-qa="highest-title">Currently Printed</span>
                     </span>
 
                     <div class="text-lg font-black text-red-700 mt-0.5">
-                        400
-                        <span class="text-xs font-bold text-red-600">
+                        <span data-qa="highest">400</span>
+                        <span data-qa="highest-unit" class="text-xs font-bold text-red-600">
                             Pcs
                         </span>
                     </div>
 
                     <div class="serial-code text-[9px] font-bold text-red-700 mt-0.5 truncate">
-                        20269251511 - 20269251910
+                        <span data-qa="highest-detail">20269251511 - 20269251910</span>
                     </div>
 
                 </div>
@@ -262,14 +291,14 @@
                     </span>
 
                     <div class="text-lg font-black text-emerald-800 mt-0.5">
-                        1,040
+                        <span data-qa="remaining">1,040</span>
                         <span class="text-xs font-normal text-emerald-600">
                             Pcs
                         </span>
                     </div>
 
                     <div class="serial-code text-[9px] font-medium text-emerald-700 mt-0.5 truncate">
-                        20269251911 - 20269252950
+                        <span data-qa="remaining-detail">20269251911 - 20269252950</span>
                     </div>
 
                 </div>
@@ -300,7 +329,7 @@
                         <tr class="bg-slate-800 text-white uppercase text-[9px] font-bold border-b border-slate-800">
 
                             <th class="py-2.5 px-3.5 border-r border-slate-700">
-                                Batch Range
+                                <span data-qa="batch-label">Batch Range</span>
                             </th>
 
                             <th class="py-2.5 px-3.5 border-r border-slate-700">
@@ -316,11 +345,11 @@
                             </th>
 
                             <th class="py-2.5 px-3.5 border-r border-slate-700">
-                                Status
+                                <span data-qa="row-status-title">Status</span>
                             </th>
 
                             <th class="py-2.5 px-3.5">
-                                Handler / Remarks
+                                <span data-qa="handler-label">Handler / Remarks</span>
                             </th>
 
                         </tr>
@@ -328,7 +357,7 @@
                     </thead>
 
 
-                    <tbody class="divide-y divide-slate-200 text-[11px]">
+                    <tbody data-qa="ledger" class="divide-y divide-slate-200 text-[11px]">
 
                         <!-- Batch 1 -->
                         <tr class="bg-white text-slate-700">
@@ -559,12 +588,12 @@
 
                 <div class="text-xs text-slate-600 flex items-center justify-between font-mono bg-white p-2 border border-slate-200 rounded-lg">
 
-                    <span>
+                    <span data-qa="balance-formula">
                         3,000 (Allocated) - 560 (Batch 1-2) - 500 (Batch 3) - 500 (Batch 4) - 400 (Batch 5 / Today)
                     </span>
 
                     <span class="font-bold text-emerald-700">
-                        = 1,040 Pcs Available
+                        <span data-qa="balance-result">= 1,040 Pcs Available</span>
                     </span>
 
                 </div>
@@ -585,7 +614,7 @@
                     <div class="border-b-2 border-slate-900 pb-1 mb-1.5 min-h-[32px] flex items-end justify-center">
 
                         <span class="font-bold text-slate-900 text-sm uppercase tracking-wide">
-                            Roeben Dem P. Perez, RMT
+                            <span data-qa="prepared-by">Roeben Dem P. Perez, RMT</span>
                         </span>
 
                     </div>
@@ -625,7 +654,7 @@
             <div class="mt-6 text-center text-[9px] text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-2">
 
                 Northern Mindanao Regional Blood Center
-                • Document Ref: QA-NVBSP-2026-0928
+                <span data-qa="reference">• Document Ref: QA-NVBSP-2026-0928</span>
 
             </div>
 
