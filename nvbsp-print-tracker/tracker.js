@@ -3,6 +3,7 @@ import { createClient } from "../scheduler/public/vendor/supabase.js";
 const element = (id) => document.getElementById(id);
 const loginForm = element("login-form");
 const recordForm = element("record-form");
+const seriesForm = element("series-form");
 const allocationSelect = element("allocation");
 const pageSize = 15;
 const dateFormatter = new Intl.DateTimeFormat("en-CA", {
@@ -50,6 +51,7 @@ function setPrintDate(reset = false) {
 function syncControls() {
   allocationSelect.disabled = busy || !allocations.length;
   element("refresh").disabled = busy;
+  element("series-fields").disabled = busy;
   element("record-fields").disabled = busy || !snapshot;
   element("copy-next").disabled = busy || snapshot?.next == null;
   element("previous").disabled = busy || !snapshot || cursors.length === 1;
@@ -142,27 +144,53 @@ function lock(task) {
   };
 }
 
-async function loadAllocations(session) {
-  const { data, error } = await client.from("nvbsp_print_allocations")
-    .select("first_serial,last_serial").order("first_serial", { ascending: false });
-  if (session !== activeUser) return;
-  if (error) throw error;
-  const selected = allocationSelect.value;
-  allocations = data;
+function renderInventory() {
+  const table = element("inventory");
+  table.replaceChildren();
+  if (!allocations.length) {
+    const cell = table.insertRow().insertCell();
+    cell.colSpan = 3;
+    cell.textContent = "No barcode series in inventory.";
+  }
+  for (const { first_serial, last_serial } of allocations) {
+    const row = table.insertRow();
+    row.insertCell().textContent = barcode(first_serial);
+    row.insertCell().textContent = barcode(last_serial);
+    row.insertCell().textContent = quantityFormatter.format(last_serial - first_serial + 1);
+  }
+}
+
+async function loadAllocations(session, preferred = allocationSelect.value) {
+  const entries = [];
+  let before;
+  const batchSize = 100;
+  do {
+    let query = client.from("nvbsp_print_allocations")
+      .select("first_serial,last_serial").order("first_serial", { ascending: false }).limit(batchSize);
+    if (before != null) query = query.lt("first_serial", before);
+    const { data, error } = await query;
+    if (session !== activeUser) return;
+    if (error) throw error;
+    entries.push(...data);
+    before = data.length === batchSize ? data.at(-1).first_serial : null;
+  } while (before != null);
+
+  allocations = entries;
   allocationSelect.replaceChildren(...allocations.map((allocation) => {
     const option = document.createElement("option");
     option.value = allocation.first_serial;
     option.textContent = barcode(allocation.first_serial) + " to " + barcode(allocation.last_serial);
     return option;
   }));
-  const previous = allocations.find((allocation) => String(allocation.first_serial) === selected);
-  allocationSelect.value = String((previous ?? allocations[0])?.first_serial ?? "");
+  const selected = allocations.find((allocation) => String(allocation.first_serial) === String(preferred));
+  allocationSelect.value = String((selected ?? allocations[0])?.first_serial ?? "");
+  renderInventory();
 }
 
 async function loadSnapshot(session, pages = [null]) {
   snapshot = null;
   renderSnapshot();
-  if (!allocationSelect.value) throw new Error("No NVBSP barcode allocation is configured.");
+  if (!allocationSelect.value) return;
   const { data, error } = await client.rpc("nvbsp_print_snapshot", {
     p_allocation: Number(allocationSelect.value),
     p_before: pages.at(-1),
@@ -184,6 +212,9 @@ function showLogin() {
   snapshot = null;
   busy = false;
   allocationSelect.replaceChildren();
+  seriesForm.reset();
+  element("incoming-series").open = false;
+  renderInventory();
   recordForm.reset();
   renderSnapshot();
   element("login-panel").hidden = false;
@@ -291,6 +322,58 @@ for (const name of ["first", "last"]) {
     recordForm.elements[name === "first" ? "last" : "printedOn"].focus();
   });
 }
+
+seriesForm.elements.first.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  seriesForm.elements.last.focus();
+});
+seriesForm.elements.last.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  seriesForm.querySelector("button").focus();
+});
+
+const saveSeries = lock(async (session) => {
+  const { first, last } = seriesForm.elements;
+  const firstSerial = parseBarcode(first.value);
+  const lastSerial = parseBarcode(last.value);
+  if (firstSerial > lastSerial) throw new Error("The last barcode must be at or after the first barcode.");
+
+  showStatus("Saving barcode series…");
+  const { error } = await client.from("nvbsp_print_allocations").insert({
+    first_serial: firstSerial, last_serial: lastSerial,
+  });
+  if (session !== activeUser) return;
+  if (error) {
+    if (["23505", "23P01"].includes(error.code)) {
+      throw new Error("This range overlaps a series already in inventory.");
+    }
+    throw error;
+  }
+
+  seriesForm.reset();
+  element("incoming-series").open = false;
+  recordForm.reset();
+  setPrintDate(true);
+  snapshot = null;
+  renderSnapshot();
+  const message = "Series saved to inventory. " +
+    quantityFormatter.format(lastSerial - firstSerial + 1) + " barcode IDs added.";
+  try {
+    await loadAllocations(session, firstSerial);
+    if (session !== activeUser) return;
+    await loadSnapshot(session);
+  } catch {
+    if (session === activeUser) showStatus(message + " Select Refresh to reload the inventory.", true);
+    return;
+  }
+  if (session === activeUser) showStatus(message);
+});
+seriesForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveSeries();
+});
 
 const saveRecord = lock(async (session) => {
   if (!snapshot) return;

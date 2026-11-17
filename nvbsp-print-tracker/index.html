@@ -35,6 +35,35 @@
     <button id="sign-out" class="secondary standalone" type="button" hidden>Sign out</button>
 
     <div id="tracker" hidden>
+      <section class="panel inventory-panel" aria-labelledby="inventory-title">
+        <h2 id="inventory-title">Barcode series inventory</h2>
+        <details id="incoming-series">
+          <summary>Add incoming series</summary>
+          <form id="series-form">
+            <fieldset id="series-fields" disabled>
+              <p>Enter the first and last barcode IDs of the assigned series. Both IDs are included.</p>
+              <div class="fields series-fields">
+                <label>First barcode ID
+                  <input name="first" type="text" required autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="24">
+                </label>
+                <label>Last barcode ID
+                  <input name="last" type="text" required autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="24">
+                </label>
+              </div>
+              <button type="submit">Save to inventory</button>
+            </fieldset>
+          </form>
+        </details>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Barcode series inventory table">
+          <table>
+            <thead>
+              <tr><th scope="col">First barcode</th><th scope="col">Last barcode</th><th scope="col">Allocated</th></tr>
+            </thead>
+            <tbody id="inventory"></tbody>
+          </table>
+        </div>
+      </section>
+
       <div class="toolbar">
         <label for="allocation">Allocated barcode series
           <select id="allocation"></select>
