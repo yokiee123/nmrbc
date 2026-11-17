@@ -75,6 +75,14 @@
               </label>
               <label>Print date <input name="printedOn" type="date" required></label>
             </div>
+            <div class="fields">
+              <label>Printed by
+                <input name="printedBy" type="text" maxlength="120" required>
+              </label>
+              <label>Received by (optional at printing)
+                <input name="receivedBy" type="text" maxlength="120">
+              </label>
+            </div>
             <label>Remarks (optional)
               <input name="remarks" type="text" maxlength="300" placeholder="For example, printer or batch reference">
             </label>
@@ -89,7 +97,11 @@
         <div class="table-scroll" tabindex="0" role="region" aria-label="Print history table">
           <table>
             <thead>
-              <tr><th scope="col">First barcode</th><th scope="col">Last barcode</th><th scope="col">Qty</th><th scope="col">Print date</th><th scope="col">Remarks</th></tr>
+              <tr>
+                <th scope="col">First barcode</th><th scope="col">Last barcode</th><th scope="col">Qty</th>
+                <th scope="col">Print date</th><th scope="col">Printed by</th><th scope="col">Received by</th>
+                <th scope="col">Remarks</th>
+              </tr>
             </thead>
             <tbody id="history"></tbody>
           </table>
@@ -101,5 +113,16 @@
       </section>
     </div>
   </main>
+  <template id="receipt-form-template">
+    <details>
+      <summary>Record recipient</summary>
+      <form>
+        <fieldset class="receipt-fields">
+          <label>Received by <input name="receivedBy" type="text" maxlength="120" required></label>
+          <button class="secondary" type="submit">Save recipient</button>
+        </fieldset>
+      </form>
+    </details>
+  </template>
 </body>
 </html>

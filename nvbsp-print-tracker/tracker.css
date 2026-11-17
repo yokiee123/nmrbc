@@ -52,6 +52,8 @@ th { background: #eef2f8; }
 td:first-child, td:nth-child(2) { font-family: ui-monospace, monospace; }
 td:nth-child(4) { white-space: nowrap; }
 td:last-child { overflow-wrap: anywhere; }
+.receipt-fields { min-width: 12rem; margin-top: 0.5rem; }
+summary { cursor: pointer; }
 .pagination { margin-top: 0.85rem; }
 @media (max-width: 660px) {
   .metrics, .fields { grid-template-columns: 1fr; }

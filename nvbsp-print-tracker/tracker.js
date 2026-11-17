@@ -54,6 +54,43 @@ function syncControls() {
   element("copy-next").disabled = busy || snapshot?.next == null;
   element("previous").disabled = busy || !snapshot || cursors.length === 1;
   element("more").disabled = busy || !snapshot || snapshot.records.length <= pageSize;
+  for (const fields of document.querySelectorAll(".receipt-fields")) fields.disabled = busy;
+}
+
+function renderReceipt(cell, record) {
+  if (record.received_by || !record.printed_by) {
+    cell.textContent = record.received_by ?? "—";
+    return;
+  }
+
+  const details = element("receipt-form-template").content.firstElementChild.cloneNode(true);
+  const form = details.querySelector("form");
+  const saveReceipt = lock(async (session) => {
+    const recipient = form.elements.receivedBy.value.trim();
+    if (!recipient) throw new Error("Enter the recipient’s name.");
+    showStatus("Saving recipient…");
+    const { data, error } = await client.from("nvbsp_print_records")
+      .update({ received_by: recipient })
+      .eq("first_serial", record.first_serial)
+      .is("received_by", null)
+      .select("received_by")
+      .maybeSingle();
+    if (session !== activeUser) return;
+    if (error) throw error;
+    if (!data) {
+      await loadSnapshot(session, cursors);
+      if (session === activeUser) showStatus("The receipt record changed. Check the refreshed print history.", true);
+      return;
+    }
+    record.received_by = data.received_by;
+    cell.textContent = data.received_by;
+    showStatus("Recipient recorded.");
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveReceipt();
+  });
+  cell.append(details);
 }
 
 function renderSnapshot() {
@@ -69,7 +106,7 @@ function renderSnapshot() {
   history.replaceChildren();
   if (snapshot && !snapshot.records.length) {
     const cell = history.insertRow().insertCell();
-    cell.colSpan = 5;
+    cell.colSpan = 7;
     cell.textContent = "No printed barcodes recorded for this allocation.";
   }
   for (const record of snapshot?.records.slice(0, pageSize) ?? []) {
@@ -77,9 +114,11 @@ function renderSnapshot() {
     const values = [
       barcode(record.first_serial), barcode(record.last_serial),
       quantityFormatter.format(record.last_serial - record.first_serial + 1),
-      record.printed_on ?? "—", record.remarks || "—",
+      record.printed_on ?? "—", record.printed_by ?? "—",
     ];
     for (const value of values) row.insertCell().textContent = value;
+    renderReceipt(row.insertCell(), record);
+    row.insertCell().textContent = record.remarks || "—";
   }
   syncControls();
 }
@@ -256,19 +295,22 @@ for (const name of ["first", "last"]) {
 const saveRecord = lock(async (session) => {
   if (!snapshot) return;
   const allocation = allocations.find((entry) => entry.first_serial === Number(allocationSelect.value));
-  const { first, last, printedOn, remarks } = recordForm.elements;
+  const { first, last, printedOn, printedBy, receivedBy, remarks } = recordForm.elements;
   const firstSerial = parseBarcode(first.value);
   const lastSerial = last.value.trim() ? parseBarcode(last.value) : firstSerial;
   if (firstSerial > lastSerial) throw new Error("The last barcode must be at or after the first barcode.");
   if (firstSerial < allocation.first_serial || lastSerial > allocation.last_serial) {
     throw new Error("Both barcodes must belong to the selected allocation.");
   }
+  const printer = printedBy.value.trim();
+  if (!printer) throw new Error("Enter the name of the person who printed the barcodes.");
 
   showStatus("Saving print record…");
   const { error } = await client.from("nvbsp_print_records").insert({
     first_serial: firstSerial, last_serial: lastSerial,
     allocation_first: allocation.first_serial, allocation_last: allocation.last_serial,
-    printed_on: printedOn.value, remarks: remarks.value.trim(),
+    printed_on: printedOn.value, printed_by: printer,
+    received_by: receivedBy.value.trim() || null, remarks: remarks.value.trim(),
   });
   if (session !== activeUser) return;
   if (error) {

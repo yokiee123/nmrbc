@@ -29,13 +29,18 @@ CREATE TABLE IF NOT EXISTS public.nvbsp_print_records (
 CREATE INDEX IF NOT EXISTS nvbsp_print_records_allocation_idx
   ON public.nvbsp_print_records (allocation_first, first_serial DESC);
 
+ALTER TABLE public.nvbsp_print_records
+  ADD COLUMN IF NOT EXISTS printed_by text CHECK (char_length(btrim(printed_by)) BETWEEN 1 AND 120),
+  ADD COLUMN IF NOT EXISTS received_by text CHECK (char_length(btrim(received_by)) BETWEEN 1 AND 120);
+
 ALTER TABLE public.nvbsp_print_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nvbsp_print_records ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.nvbsp_print_allocations, public.nvbsp_print_records
   FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.nvbsp_print_allocations, public.nvbsp_print_records TO authenticated;
-GRANT INSERT (first_serial, last_serial, allocation_first, allocation_last, printed_on, remarks)
+GRANT INSERT (first_serial, last_serial, allocation_first, allocation_last, printed_on, printed_by, received_by, remarks)
   ON public.nvbsp_print_records TO authenticated;
+GRANT UPDATE (received_by) ON public.nvbsp_print_records TO authenticated;
 
 DROP POLICY IF EXISTS nvbsp_read_allocations ON public.nvbsp_print_allocations;
 CREATE POLICY nvbsp_read_allocations ON public.nvbsp_print_allocations FOR SELECT
@@ -49,8 +54,14 @@ CREATE POLICY nvbsp_add_records ON public.nvbsp_print_records FOR INSERT
     (SELECT public.scheduler_is_admin())
     AND recorded_by = (SELECT auth.uid())
     AND printed_on IS NOT NULL
+    AND printed_by IS NOT NULL
     AND printed_on <= (now() AT TIME ZONE 'Asia/Manila')::date
   );
+DROP POLICY IF EXISTS nvbsp_add_recipient ON public.nvbsp_print_records;
+CREATE POLICY nvbsp_add_recipient ON public.nvbsp_print_records FOR UPDATE
+  TO authenticated
+  USING ((SELECT public.scheduler_is_admin()) AND printed_by IS NOT NULL AND received_by IS NULL)
+  WITH CHECK ((SELECT public.scheduler_is_admin()) AND received_by IS NOT NULL);
 
 -- September 28 QA report. Earlier batch dates were not individually listed.
 INSERT INTO public.nvbsp_print_allocations (first_serial, last_serial)
@@ -78,7 +89,7 @@ AS $$
     FROM public.nvbsp_print_allocations
     WHERE first_serial = p_allocation
   ), records AS (
-    SELECT r.first_serial, r.last_serial, r.printed_on, r.remarks,
+    SELECT r.first_serial, r.last_serial, r.printed_on, r.printed_by, r.received_by, r.remarks,
       lag(r.last_serial, 1, a.first_serial - 1) OVER (ORDER BY r.first_serial) AS previous_end
     FROM public.nvbsp_print_records r
     JOIN allocation a ON a.first_serial = r.allocation_first
@@ -88,7 +99,7 @@ AS $$
       coalesce(sum(last_serial - first_serial + 1), 0) AS printed
     FROM records
   ), page AS (
-    SELECT first_serial, last_serial, printed_on, remarks
+    SELECT first_serial, last_serial, printed_on, printed_by, received_by, remarks
     FROM records
     WHERE p_before IS NULL OR first_serial < p_before
     ORDER BY first_serial DESC
